@@ -1,15 +1,16 @@
 /* =========================================================
-   EduStrategist - UI Controller
+   EduStrategist — UI Controller (Multiplayer & Visual Engine)
    ========================================================= */
 
 const UI = {
     elements: {},
     selectedStrategy: null,
-    toastTimeout: null,
-    modalConfirmAction: null,
+    selectedPrediction: null,
+    playerCount: 1,
+    passCallback: null,
+    activeLearnTopicIndex: 0,
     audioContext: null
 };
-
 
 /* =========================================================
    INITIALIZATION
@@ -18,27 +19,17 @@ const UI = {
 function initializeUI() {
     cacheUIElements();
     setupUIEvents();
-    initializeSettingsUI();
-
+    renderPlayersSetup(1);
     renderStrategies();
+    renderLearnHub();
+    renderBossesGrid();
+    renderProfileDashboard();
     renderLeaderboard();
-
-    // Match the game's default difficulty
-    const gameState = EduStrategistGame.getState();
-
-    document.querySelectorAll(".difficulty-card").forEach(card => {
-        card.classList.toggle(
-            "selected",
-            card.dataset.difficulty === gameState.difficulty
-        );
-    });
-
     showScreen("mainMenu");
 }
 
-
 /* =========================================================
-   CACHE ELEMENTS
+   CACHE UI ELEMENTS
    ========================================================= */
 
 function cacheUIElements() {
@@ -50,85 +41,94 @@ function cacheUIElements() {
         thinkingScreen: document.getElementById("screen-thinking"),
         resultScreen: document.getElementById("screen-result"),
         finalScreen: document.getElementById("screen-final"),
+        learnScreen: document.getElementById("screen-learn"),
+        modesScreen: document.getElementById("screen-modes"),
+        profileScreen: document.getElementById("screen-profile"),
         howToPlayScreen: document.getElementById("screen-how-to-play"),
         leaderboardScreen: document.getElementById("screen-leaderboard"),
         settingsScreen: document.getElementById("screen-settings"),
 
-        // Main menu
+        // Navigation Buttons
         playButton: document.getElementById("btn-play"),
+        learnButton: document.getElementById("btn-learn"),
+        modesButton: document.getElementById("btn-modes"),
+        achievementsButton: document.getElementById("btn-achievements"),
         howToPlayButton: document.getElementById("btn-how-to-play"),
         leaderboardButton: document.getElementById("btn-leaderboard"),
         settingsButton: document.getElementById("btn-settings"),
 
-        // Setup
-        playerName: document.getElementById("player-name"),
-        nameError: document.getElementById("name-error"),
+        // Setup Screen
+        countBtns: document.querySelectorAll(".count-btn"),
+        playersSetupContainer: document.getElementById("players-setup-container"),
+        setupModeSelect: document.getElementById("setup-mode-select"),
         startGameButton: document.getElementById("btn-start-game"),
-        difficultyCards: document.querySelectorAll(".difficulty-card"),
 
-        // Game
+        // Game Screen
         currentRound: document.getElementById("current-round"),
         totalRounds: document.getElementById("total-rounds"),
-        playerScore: document.getElementById("player-score"),
-        aiScore: document.getElementById("ai-score"),
+        liveScoreboard: document.getElementById("live-scoreboard"),
         timer: document.getElementById("timer"),
         timerProgress: document.getElementById("timer-progress"),
+        turnBanner: document.getElementById("turn-banner"),
+        turnAvatar: document.getElementById("turn-avatar"),
+        turnPlayerName: document.getElementById("turn-player-name"),
+        hintButton: document.getElementById("btn-hint"),
+        hintsCount: document.getElementById("hints-count"),
 
+        // Scenario & Strategies
         scenarioCategory: document.getElementById("scenario-category"),
         scenarioConcept: document.getElementById("scenario-concept"),
         scenarioTitle: document.getElementById("scenario-title"),
         scenarioDescription: document.getElementById("scenario-description"),
-
+        predictionSection: document.getElementById("prediction-section"),
+        predictionOptions: document.getElementById("prediction-options"),
         strategyOptions: document.getElementById("strategy-options"),
         confirmStrategyButton: document.getElementById("btn-confirm-strategy"),
         strategyHistory: document.getElementById("strategy-history"),
 
-        // Result
+        // Results Screen
         resultTitle: document.getElementById("result-title"),
-        resultPlayerStrategy: document.getElementById("result-player-strategy"),
-        resultAIStrategy: document.getElementById("result-ai-strategy"),
-        roundPlayerPoints: document.getElementById("round-player-points"),
-        roundAIPoints: document.getElementById("round-ai-points"),
+        multiplayerRevealGrid: document.getElementById("multiplayer-reveal-grid"),
         strategicInsight: document.getElementById("strategic-insight"),
         resultConcept: document.getElementById("result-concept"),
+        liveStandingsTable: document.getElementById("live-standings-table"),
         nextRoundButton: document.getElementById("btn-next-round"),
 
-        // Final
+        // Final Screen
         finalResultTitle: document.getElementById("final-result-title"),
         finalResultSubtitle: document.getElementById("final-result-subtitle"),
-        finalPlayerScore: document.getElementById("final-player-score"),
-        finalAIScore: document.getElementById("final-ai-score"),
-
+        finalPodium: document.getElementById("final-podium"),
         performanceTotal: document.getElementById("performance-total"),
         performancePrediction: document.getElementById("performance-prediction"),
         performanceAdaptability: document.getElementById("performance-adaptability"),
         performanceRisk: document.getElementById("performance-risk"),
-        performanceDecision: document.getElementById("performance-decision"),
-
         barPrediction: document.getElementById("bar-prediction"),
         barAdaptability: document.getElementById("bar-adaptability"),
         barRisk: document.getElementById("bar-risk"),
-        barDecision: document.getElementById("bar-decision"),
-
-        conceptsLearned: document.getElementById("concepts-learned"),
-
         playAgainButton: document.getElementById("btn-play-again"),
         finalMenuButton: document.getElementById("btn-final-menu"),
 
-        // Leaderboard
-        leaderboardList: document.getElementById("leaderboard-list"),
-        clearLeaderboardButton: document.getElementById("btn-clear-leaderboard"),
+        // Pass Turn Modal
+        modalPassTurn: document.getElementById("modal-pass-turn"),
+        passAvatar: document.getElementById("pass-avatar"),
+        passTitle: document.getElementById("pass-title"),
+        passMessage: document.getElementById("pass-message"),
+        btnUnlockPassTurn: document.getElementById("btn-unlock-pass-turn"),
 
-        // Settings
-        toggleSound: document.getElementById("toggle-sound"),
-        toggleMusic: document.getElementById("toggle-music"),
-        resetDataButton: document.getElementById("btn-reset-data"),
+        // Profile & Achievements
+        statWinStreak: document.getElementById("stat-win-streak"),
+        statPredStreak: document.getElementById("stat-pred-streak"),
+        statBestStreak: document.getElementById("stat-best-streak"),
+        achievementsGrid: document.getElementById("achievements-grid"),
 
-        // Toast
+        // Learn Hub & Bosses
+        learnTopicsNav: document.getElementById("learn-topics-nav"),
+        learnTopicCard: document.getElementById("learn-topic-card"),
+        bossGrid: document.getElementById("boss-grid"),
+
+        // Toast & General Modal
         toast: document.getElementById("toast"),
         toastMessage: document.getElementById("toast-message"),
-
-        // Modal
         modal: document.getElementById("modal"),
         modalTitle: document.getElementById("modal-title"),
         modalMessage: document.getElementById("modal-message"),
@@ -137,1079 +137,612 @@ function cacheUIElements() {
     };
 }
 
-
 /* =========================================================
-   EVENT SETUP
+   EVENT LISTENERS & NAVIGATION
    ========================================================= */
 
 function setupUIEvents() {
+    // Menu Buttons
+    if (UI.elements.playButton) UI.elements.playButton.addEventListener("click", () => showScreen("setup"));
+    if (UI.elements.learnButton) UI.elements.learnButton.addEventListener("click", () => { renderLearnHub(); showScreen("learn"); });
+    if (UI.elements.modesButton) UI.elements.modesButton.addEventListener("click", () => { renderBossesGrid(); showScreen("modes"); });
+    if (UI.elements.achievementsButton) UI.elements.achievementsButton.addEventListener("click", () => { renderProfileDashboard(); showScreen("profile"); });
+    if (UI.elements.howToPlayButton) UI.elements.howToPlayButton.addEventListener("click", () => showScreen("howToPlay"));
+    if (UI.elements.leaderboardButton) UI.elements.leaderboardButton.addEventListener("click", () => { renderLeaderboard(); showScreen("leaderboard"); });
+    if (UI.elements.settingsButton) UI.elements.settingsButton.addEventListener("click", () => showScreen("settings"));
 
-    // Main menu
-    UI.elements.playButton.addEventListener("click", () => {
-        showScreen("setup");
+    // Back Buttons
+    document.querySelectorAll("[data-back]").forEach(btn => {
+        btn.addEventListener("click", () => showScreen("mainMenu"));
     });
 
-    UI.elements.howToPlayButton.addEventListener("click", () => {
-        showScreen("howToPlay");
-    });
-
-    UI.elements.leaderboardButton.addEventListener("click", () => {
-        renderLeaderboard();
-        showScreen("leaderboard");
-    });
-
-    UI.elements.settingsButton.addEventListener("click", () => {
-        initializeSettingsUI();
-        showScreen("settings");
-    });
-
-
-    // Difficulty
-    UI.elements.difficultyCards.forEach(card => {
-        card.addEventListener("click", () => {
-
-            UI.elements.difficultyCards.forEach(item => {
-                item.classList.remove("selected");
-            });
-
-            card.classList.add("selected");
-
-            EduStrategistGame.setSelectedDifficulty(
-                card.dataset.difficulty
-            );
-
+    // Player Count Selector
+    UI.elements.countBtns.forEach(btn => {
+        btn.addEventListener("click", () => {
+            UI.elements.countBtns.forEach(b => b.classList.remove("active"));
+            btn.classList.add("active");
+            UI.playerCount = parseInt(btn.dataset.count) || 1;
+            renderPlayersSetup(UI.playerCount);
             playSound("click");
         });
     });
 
+    // Start Multiplayer Game
+    if (UI.elements.startGameButton) UI.elements.startGameButton.addEventListener("click", handleStartMultiplayerGame);
 
-    // Start game
-    UI.elements.startGameButton.addEventListener("click", handleStartGame);
+    // Strategy Option Selection
+    if (UI.elements.strategyOptions) {
+        UI.elements.strategyOptions.addEventListener("click", e => {
+            const card = e.target.closest(".strategy-card");
+            if (!card || card.disabled) return;
+            selectStrategy(card.dataset.strategy);
+        });
+    }
 
-    UI.elements.playerName.addEventListener("input", () => {
-        UI.elements.nameError.textContent = "";
-        UI.elements.playerName.classList.remove("error");
-    });
-
-    UI.elements.playerName.addEventListener("keydown", event => {
-        if (event.key === "Enter") {
-            handleStartGame();
-        }
-    });
-
-
-    // Strategy selection
-    UI.elements.strategyOptions.addEventListener("click", event => {
-
-        const card = event.target.closest(".strategy-card");
-
-        if (!card || card.disabled) {
-            return;
-        }
-
-        selectStrategy(card.dataset.strategy);
-    });
-
-
-    // Confirm strategy
-    UI.elements.confirmStrategyButton.addEventListener("click", () => {
-
-        if (!UI.selectedStrategy) {
-            showToast("Choose a strategy first.");
-            return;
-        }
-
-        EduStrategistGame.submitPlayerStrategy(
-            UI.selectedStrategy
-        );
-    });
-
-
-    // Result
-    UI.elements.nextRoundButton.addEventListener("click", () => {
-        EduStrategistGame.nextRound();
-    });
-
-
-    // Final
-    UI.elements.playAgainButton.addEventListener("click", () => {
-        EduStrategistGame.restartGame();
-    });
-
-    UI.elements.finalMenuButton.addEventListener("click", () => {
-        EduStrategistGame.returnToMainMenu();
-    });
-
-
-    // Leaderboard
-    UI.elements.clearLeaderboardButton.addEventListener("click", () => {
-
-        openModal(
-            "Clear Leaderboard?",
-            "This will permanently remove all leaderboard records.",
-            () => {
-                EduStrategistGame.clearLeaderboard();
-                renderLeaderboard();
-                showToast("Leaderboard cleared.");
+    // Confirm Strategy Lock
+    if (UI.elements.confirmStrategyButton) {
+        UI.elements.confirmStrategyButton.addEventListener("click", () => {
+            if (!UI.selectedStrategy) {
+                showToast("Choose a strategy first.");
+                return;
             }
-        );
-    });
+            EduStrategistGame.lockPlayerStrategy(UI.selectedStrategy, UI.selectedPrediction);
+        });
+    }
 
+    // Hint Button
+    if (UI.elements.hintButton) {
+        UI.elements.hintButton.addEventListener("click", () => {
+            const hintText = EduStrategistGame.requestHint();
+            if (hintText) showToast(hintText);
+        });
+    }
 
-    // Settings
-    UI.elements.toggleSound.addEventListener("change", () => {
-        localStorage.setItem(
-            "edustrategist_sound",
-            UI.elements.toggleSound.checked
-        );
-
-        if (UI.elements.toggleSound.checked) {
-            playSound("success");
-        }
-    });
-
-
-    UI.elements.toggleMusic.addEventListener("change", () => {
-        localStorage.setItem(
-            "edustrategist_music",
-            UI.elements.toggleMusic.checked
-        );
-
-        showToast(
-            UI.elements.toggleMusic.checked
-                ? "Music enabled."
-                : "Music disabled."
-        );
-    });
-
-
-    UI.elements.resetDataButton.addEventListener("click", () => {
-
-        openModal(
-            "Reset All Data?",
-            "This will erase your saved name, leaderboard records and settings.",
-            () => {
-
-                EduStrategistGame.clearAllStoredData();
-
-                UI.elements.playerName.value = "";
-
-                localStorage.removeItem("edustrategist_sound");
-                localStorage.removeItem("edustrategist_music");
-
-                initializeSettingsUI();
-                renderLeaderboard();
-
-                closeModal();
-
-                showToast("All data has been reset.");
+    // Unlock Pass Turn Modal
+    if (UI.elements.btnUnlockPassTurn) {
+        UI.elements.btnUnlockPassTurn.addEventListener("click", () => {
+            if (UI.elements.modalPassTurn) UI.elements.modalPassTurn.classList.remove("active");
+            if (typeof UI.passCallback === "function") {
+                const cb = UI.passCallback;
+                UI.passCallback = null;
+                cb();
             }
-        );
-    });
+        });
+    }
 
+    // Result & Final
+    if (UI.elements.nextRoundButton) UI.elements.nextRoundButton.addEventListener("click", () => EduStrategistGame.nextRound());
+    if (UI.elements.playAgainButton) UI.elements.playAgainButton.addEventListener("click", () => EduStrategistGame.restartGame());
+    if (UI.elements.finalMenuButton) UI.elements.finalMenuButton.addEventListener("click", () => EduStrategistGame.returnToMainMenu());
+}
 
-    // Modal
-    UI.elements.modalCancel.addEventListener("click", closeModal);
+/* =========================================================
+   DYNAMIC PLAYER SETUP CARDS (1–4 PLAYERS)
+   ========================================================= */
 
-    UI.elements.modalConfirm.addEventListener("click", () => {
+function renderPlayersSetup(count = 1) {
+    if (!UI.elements.playersSetupContainer) return;
+    UI.elements.playersSetupContainer.innerHTML = "";
 
-        if (typeof UI.modalConfirmAction === "function") {
-            const action = UI.modalConfirmAction;
+    for (let i = 0; i < count; i++) {
+        const playerCard = document.createElement("div");
+        playerCard.className = "player-setup-card";
+        playerCard.dataset.playerIdx = i;
 
-            UI.modalConfirmAction = null;
+        const isAIByDefault = i > 0 && count === 1; // Single player defaults player 2 to AI
+        const defaultName = isAIByDefault ? "AI Strategist" : `Player ${i + 1}`;
+        const defaultAvatar = AVATARS[i % AVATARS.length].icon;
+        const defaultColor = PLAYER_COLORS[i % PLAYER_COLORS.length].hex;
 
-            closeModal();
+        playerCard.innerHTML = `
+            <div class="player-card-header" style="border-left: 4px solid ${defaultColor}">
+                <span class="player-tag" style="background:${defaultColor}">${defaultName}</span>
+                <span class="avatar-preview" id="avatar-prev-${i}">${defaultAvatar}</span>
+            </div>
+            
+            <div class="form-group compact">
+                <label>NAME</label>
+                <input type="text" id="p-name-${i}" value="${defaultName}" maxlength="18" class="custom-input">
+            </div>
 
-            action();
-        } else {
-            closeModal();
+            <div class="form-row">
+                <div class="form-group compact">
+                    <label>AVATAR</label>
+                    <select id="p-avatar-${i}" class="custom-select">
+                        ${AVATARS.map(a => `<option value="${a.icon}" ${a.icon === defaultAvatar ? 'selected' : ''}>${a.icon} ${a.name}</option>`).join('')}
+                    </select>
+                </div>
+                <div class="form-group compact">
+                    <label>COLOR</label>
+                    <select id="p-color-${i}" class="custom-select">
+                        ${PLAYER_COLORS.map(c => `<option value="${c.hex}" ${c.hex === defaultColor ? 'selected' : ''}>${c.name}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+
+            ${count > 1 ? `
+            <div class="form-row">
+                <div class="form-group compact">
+                    <label>TYPE</label>
+                    <select id="p-type-${i}" class="custom-select p-type-select">
+                        <option value="human" ${!isAIByDefault ? 'selected' : ''}>👤 Human</option>
+                        <option value="ai" ${isAIByDefault ? 'selected' : ''}>🤖 AI</option>
+                    </select>
+                </div>
+                <div class="form-group compact p-ai-personality-wrap" id="p-ai-wrap-${i}" style="${isAIByDefault ? '' : 'display:none'}">
+                    <label>AI PERSONALITY</label>
+                    <select id="p-personality-${i}" class="custom-select">
+                        ${Object.values(AI_PERSONALITIES).map(p => `<option value="${p.id}">${p.icon} ${p.name}</option>`).join('')}
+                    </select>
+                </div>
+            </div>
+            ` : ''}
+        `;
+
+        UI.elements.playersSetupContainer.appendChild(playerCard);
+
+        // Type toggle listener
+        const typeSelect = playerCard.querySelector(`#p-type-${i}`);
+        const aiWrap = playerCard.querySelector(`#p-ai-wrap-${i}`);
+        if (typeSelect) {
+            typeSelect.addEventListener("change", (e) => {
+                if (aiWrap) aiWrap.style.display = e.target.value === "ai" ? "block" : "none";
+            });
         }
+    }
+}
+
+function handleStartMultiplayerGame() {
+    const playerConfigs = [];
+    const count = UI.playerCount;
+
+    for (let i = 0; i < count; i++) {
+        const nameEl = document.getElementById(`p-name-${i}`);
+        const avatarEl = document.getElementById(`p-avatar-${i}`);
+        const colorEl = document.getElementById(`p-color-${i}`);
+        const typeEl = document.getElementById(`p-type-${i}`);
+        const persEl = document.getElementById(`p-personality-${i}`);
+
+        const name = (nameEl && nameEl.value.trim()) ? nameEl.value.trim() : `Player ${i + 1}`;
+        const avatar = avatarEl ? avatarEl.value : "🦁";
+        const color = colorEl ? colorEl.value : "#00f0ff";
+        const isAI = count > 1 ? (typeEl && typeEl.value === "ai") : (i === 1);
+        const personality = persEl ? persEl.value : "adaptive";
+
+        playerConfigs.push({ name, avatar, color, isAI, personality });
+    }
+
+    // Single player vs AI if count === 1
+    if (count === 1) {
+        playerConfigs.push({
+            name: "AI Strategist",
+            avatar: "🤖",
+            color: "#ff007f",
+            isAI: true,
+            personality: "adaptive"
+        });
+    }
+
+    const mode = UI.elements.setupModeSelect ? UI.elements.setupModeSelect.value : "classic";
+    EduStrategistGame.setupMultiplayerGame(playerConfigs, mode, null);
+}
+
+/* =========================================================
+   GAME SCREEN & SECRET SELECTION UI
+   ========================================================= */
+
+function updateGameUI(scenario, round, totalRounds, players) {
+    if (UI.elements.currentRound) UI.elements.currentRound.textContent = round;
+    if (UI.elements.totalRounds) UI.elements.totalRounds.textContent = totalRounds;
+
+    // Live Scoreboard Render
+    if (UI.elements.liveScoreboard) {
+        UI.elements.liveScoreboard.innerHTML = players.map(p => `
+            <div class="player-score-chip" style="border-top: 3px solid ${p.color}">
+                <span class="chip-avatar">${p.avatar}</span>
+                <div class="chip-info">
+                    <strong>${p.name}</strong>
+                    <small>${p.score} pts</small>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    // Scenario Details
+    if (scenario) {
+        if (UI.elements.scenarioCategory) UI.elements.scenarioCategory.textContent = scenario.category || "STRATEGY";
+        if (UI.elements.scenarioConcept) UI.elements.scenarioConcept.textContent = scenario.concept || "PAYOFF";
+        if (UI.elements.scenarioTitle) UI.elements.scenarioTitle.textContent = scenario.title || "Scenario";
+        if (UI.elements.scenarioDescription) UI.elements.scenarioDescription.textContent = scenario.description || "";
+    }
+
+    // Render Prediction Options
+    if (UI.elements.predictionOptions) {
+        UI.elements.predictionOptions.innerHTML = Object.values(STRATEGIES).map(s => `
+            <button class="pred-card" data-strategy="${s.id}">
+                <span>${s.icon}</span>
+                <small>${s.name}</small>
+            </button>
+        `).join('');
+
+        UI.elements.predictionOptions.querySelectorAll(".pred-card").forEach(btn => {
+            btn.addEventListener("click", () => {
+                UI.elements.predictionOptions.querySelectorAll(".pred-card").forEach(b => b.classList.remove("selected"));
+                btn.classList.add("selected");
+                UI.selectedPrediction = btn.dataset.strategy;
+            });
+        });
+    }
+
+    // Reset Strategy Selection
+    UI.selectedStrategy = null;
+    UI.selectedPrediction = null;
+    renderStrategies();
+}
+
+function updateTurnPromptUI(player, turnIdx, total) {
+    if (!UI.elements.turnBanner) return;
+    if (UI.elements.turnAvatar) UI.elements.turnAvatar.textContent = player.avatar;
+    if (UI.elements.turnPlayerName) UI.elements.turnPlayerName.textContent = player.name;
+    UI.elements.turnBanner.style.borderColor = player.color;
+}
+
+function showPassTurnModal(nextPlayer, onUnlock) {
+    if (!UI.elements.modalPassTurn) return;
+    UI.passCallback = onUnlock;
+    if (UI.elements.passAvatar) UI.elements.passAvatar.textContent = nextPlayer.avatar;
+    if (UI.elements.passTitle) UI.elements.passTitle.textContent = `Pass device to ${nextPlayer.name}`;
+    if (UI.elements.passMessage) UI.elements.passMessage.textContent = `Keep your strategy secret! Tap unlock when ${nextPlayer.name} is ready.`;
+    UI.elements.modalPassTurn.classList.add("active");
+}
+
+function renderStrategies() {
+    if (!UI.elements.strategyOptions) return;
+    UI.elements.strategyOptions.innerHTML = Object.values(STRATEGIES).map(s => `
+        <button class="strategy-card" data-strategy="${s.id}">
+            <div class="card-icon">${s.icon}</div>
+            <strong>${s.name}</strong>
+            <p>${s.description}</p>
+            <div class="card-tags">
+                <span>Risk: ${s.risk || 'Med'}</span>
+                <span>Reward: ${s.reward || 'High'}</span>
+            </div>
+        </button>
+    `).join('');
+}
+
+function selectStrategy(strategyId) {
+    UI.selectedStrategy = strategyId;
+    document.querySelectorAll(".strategy-card").forEach(card => {
+        card.classList.toggle("selected", card.dataset.strategy === strategyId);
+    });
+    if (UI.elements.confirmStrategyButton) {
+        UI.elements.confirmStrategyButton.disabled = false;
+    }
+    playSound("click");
+}
+
+/* =========================================================
+   ROUND REVEAL & STANDINGS UI
+   ========================================================= */
+
+function renderRoundResultsUI(roundData, aiReasoning) {
+    if (!UI.elements.multiplayerRevealGrid) return;
+    const { players, scenario, payoffs } = roundData;
+
+    // Simultaneous Reveal Flip Cards
+    UI.elements.multiplayerRevealGrid.innerHTML = players.map((p, idx) => {
+        const stratObj = STRATEGIES[(p.currentStrategy || "cooperate").toUpperCase()] || STRATEGIES.COOPERATE;
+        return `
+            <div class="reveal-card flip-in" style="border-top: 4px solid ${p.color}">
+                <div class="reveal-header">
+                    <span>${p.avatar} ${p.name}</span>
+                    <strong class="payoff-badge">+${payoffs[idx]} pts</strong>
+                </div>
+                <div class="reveal-body">
+                    <span class="strat-icon">${stratObj.icon}</span>
+                    <strong>${stratObj.name}</strong>
+                    <small>${stratObj.description}</small>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    if (UI.elements.strategicInsight) {
+        UI.elements.strategicInsight.innerHTML = `
+            <strong>${aiReasoning}</strong><br><br>
+            <em>${scenario?.insight || ''}</em>
+        `;
+    }
+
+    if (UI.elements.resultConcept) {
+        UI.elements.resultConcept.textContent = scenario?.gameTheory || "GAME THEORY PAYOFF";
+    }
+
+    // Live Standings Table
+    if (UI.elements.liveStandingsTable) {
+        const sorted = [...players].sort((a, b) => b.score - a.score);
+        UI.elements.liveStandingsTable.innerHTML = `
+            <table class="standings-table">
+                <thead><tr><th>Rank</th><th>Player</th><th>Score</th></tr></thead>
+                <tbody>
+                    ${sorted.map((p, rank) => `
+                        <tr>
+                            <td>#${rank + 1}</td>
+                            <td>${p.avatar} ${p.name}</td>
+                            <td><strong>${p.score} pts</strong></td>
+                        </tr>
+                    `).join('')}
+                </tbody>
+            </table>
+        `;
+    }
+}
+
+/* =========================================================
+   FINAL RESULTS & PODIUM UI
+   ========================================================= */
+
+function renderFinalResultsUI(sortedPlayers) {
+    if (UI.elements.finalResultTitle) {
+        const winner = sortedPlayers[0];
+        UI.elements.finalResultTitle.textContent = `${winner.avatar} ${winner.name} WINS!`;
+    }
+
+    if (UI.elements.finalPodium) {
+        UI.elements.finalPodium.innerHTML = sortedPlayers.map((p, idx) => `
+            <div class="podium-card rank-${idx + 1}" style="border-color:${p.color}">
+                <div class="rank-badge">#${idx + 1}</div>
+                <span class="podium-avatar">${p.avatar}</span>
+                <strong>${p.name}</strong>
+                <small>${p.score} points</small>
+            </div>
+        `).join('');
+    }
+}
+
+/* =========================================================
+   LEARN GAME THEORY HUB UI
+   ========================================================= */
+
+function renderLearnHub() {
+    if (!UI.elements.learnTopicsNav || !UI.elements.learnTopicCard) return;
+
+    UI.elements.learnTopicsNav.innerHTML = LEARN_LESSONS.map((topic, idx) => `
+        <button class="topic-nav-btn ${idx === UI.activeLearnTopicIndex ? 'active' : ''}" data-idx="${idx}">
+            ${topic.title}
+        </button>
+    `).join('');
+
+    const lesson = LEARN_LESSONS[UI.activeLearnTopicIndex] || LEARN_LESSONS[0];
+    UI.elements.learnTopicCard.innerHTML = `
+        <div class="lesson-header">
+            <span class="eyebrow">${lesson.concept}</span>
+            <h2>${lesson.title}</h2>
+            <p class="subtitle">${lesson.subtitle}</p>
+        </div>
+        <div class="lesson-body">
+            <h4>📖 Concept Explanation</h4>
+            <p>${lesson.explanation}</p>
+
+            <h4>💡 Real-World Example</h4>
+            <p class="example-box">${lesson.example}</p>
+
+            <div class="challenge-box">
+                <h4>🎯 Mini Challenge</h4>
+                <p>${lesson.challenge.question}</p>
+                <div class="challenge-options">
+                    ${lesson.challenge.options.map((opt, oIdx) => `
+                        <button class="challenge-btn" data-oidx="${oIdx}">${opt}</button>
+                    `).join('')}
+                </div>
+                <div id="challenge-feedback" class="feedback-msg"></div>
+            </div>
+        </div>
+    `;
+
+    // Nav Listeners
+    UI.elements.learnTopicsNav.querySelectorAll(".topic-nav-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            UI.activeLearnTopicIndex = parseInt(btn.dataset.idx) || 0;
+            renderLearnHub();
+        });
     });
 
-
-    // Close modal by clicking background
-    UI.elements.modal.addEventListener("click", event => {
-
-        if (event.target === UI.elements.modal) {
-            closeModal();
-        }
-    });
-
-
-    // Back buttons
-    document.querySelectorAll("[data-back]").forEach(button => {
-
-        button.addEventListener("click", () => {
-
-            const target = button.dataset.back;
-
-            if (target === "menu") {
-                EduStrategistGame.returnToMainMenu();
+    // Challenge Listeners
+    UI.elements.learnTopicCard.querySelectorAll(".challenge-btn").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const chosen = parseInt(btn.dataset.oidx);
+            const feedbackEl = document.getElementById("challenge-feedback");
+            if (chosen === lesson.challenge.correctIndex) {
+                btn.classList.add("correct");
+                if (feedbackEl) {
+                    feedbackEl.textContent = "🎉 " + lesson.challenge.feedback;
+                    feedbackEl.className = "feedback-msg success";
+                }
+                playSound("click");
             } else {
-                showScreen(target);
+                btn.classList.add("wrong");
+                if (feedbackEl) {
+                    feedbackEl.textContent = "❌ Try again!";
+                    feedbackEl.className = "feedback-msg error";
+                }
             }
         });
     });
 }
 
-
 /* =========================================================
-   START GAME
+   BOSS BATTLES UI
    ========================================================= */
 
-function handleStartGame() {
+function renderBossesGrid() {
+    if (!UI.elements.bossGrid) return;
+    UI.elements.bossGrid.innerHTML = BOSSES.map(boss => `
+        <div class="boss-card">
+            <div class="boss-header">
+                <span class="boss-icon">${boss.icon}</span>
+                <div>
+                    <h3>${boss.name}</h3>
+                    <span class="boss-title">${boss.title}</span>
+                </div>
+            </div>
+            <p class="boss-quote">"${boss.quote}"</p>
+            <div class="boss-meta">
+                <span>💪 Strength: ${boss.strength}</span>
+                <span>🎯 Weakness: ${boss.weakness}</span>
+            </div>
+            <button class="primary-btn btn-fight-boss" data-bossid="${boss.id}">
+                ⚔️ CHALLENGE BOSS
+            </button>
+        </div>
+    `).join('');
 
-    const name = UI.elements.playerName.value.trim();
-
-    if (!name) {
-
-        UI.elements.nameError.textContent =
-            "Please enter your name.";
-
-        UI.elements.playerName.classList.add("error");
-
-        UI.elements.playerName.focus();
-
-        playSound("error");
-
-        return;
-    }
-
-    if (name.length < 2) {
-
-        UI.elements.nameError.textContent =
-            "Name must contain at least 2 characters.";
-
-        UI.elements.playerName.classList.add("error");
-
-        UI.elements.playerName.focus();
-
-        playSound("error");
-
-        return;
-    }
-
-    if (name.length > 20) {
-
-        UI.elements.nameError.textContent =
-            "Name must be 20 characters or less.";
-
-        UI.elements.playerName.classList.add("error");
-
-        UI.elements.playerName.focus();
-
-        playSound("error");
-
-        return;
-    }
-
-    UI.elements.nameError.textContent = "";
-    UI.elements.playerName.classList.remove("error");
-
-    playSound("start");
-
-    EduStrategistGame.startGame(name);
-}
-
-
-/* =========================================================
-   SCREEN MANAGEMENT
-   ========================================================= */
-
-function showScreen(screenName) {
-
-    const screenMap = {
-        mainMenu: "screen-menu",
-        setup: "screen-setup",
-        game: "screen-game",
-        thinking: "screen-thinking",
-        result: "screen-result",
-        final: "screen-final",
-        howToPlay: "screen-how-to-play",
-        leaderboard: "screen-leaderboard",
-        settings: "screen-settings"
-    };
-
-    const targetId = screenMap[screenName];
-
-    if (!targetId) {
-        console.warn("Unknown screen:", screenName);
-        return;
-    }
-
-    document.querySelectorAll(".screen").forEach(screen => {
-        screen.classList.remove("active");
-    });
-
-    const target = document.getElementById(targetId);
-
-    if (target) {
-        target.classList.add("active");
-    }
-
-    window.scrollTo({
-        top: 0,
-        behavior: "instant"
+    UI.elements.bossGrid.querySelectorAll(".btn-fight-boss").forEach(btn => {
+        btn.addEventListener("click", () => {
+            const boss = BOSSES.find(b => b.id === btn.dataset.bossid);
+            if (boss) {
+                EduStrategistGame.setupMultiplayerGame([
+                    { name: "Player 1", avatar: "🦁", color: "#00f0ff", isAI: false },
+                    { name: boss.name, avatar: boss.icon, color: "#ff007f", isAI: true, personality: boss.personality }
+                ], "boss_battle", boss);
+            }
+        });
     });
 }
 
-
 /* =========================================================
-   GAME UI
+   PROFILE & ACHIEVEMENTS DASHBOARD UI
    ========================================================= */
 
-function updateGameUI(scenario, round, totalRounds, playerScore, aiScore) {
+function renderProfileDashboard() {
+    const gameState = EduStrategistGame.getState();
 
-    // Update round and scores
-    UI.elements.currentRound.textContent = round;
-    UI.elements.totalRounds.textContent = totalRounds;
+    if (UI.elements.statWinStreak) UI.elements.statWinStreak.textContent = gameState.streaks.winStreak || 0;
+    if (UI.elements.statPredStreak) UI.elements.statPredStreak.textContent = gameState.streaks.predictionStreak || 0;
+    if (UI.elements.statBestStreak) UI.elements.statBestStreak.textContent = gameState.streaks.bestStreak || 0;
 
-    UI.elements.playerScore.textContent = playerScore;
-    UI.elements.aiScore.textContent = aiScore;
+    const data = EduStrategistGame.getLeaderboard();
+    const unlocked = (data && data.achievements) ? data.achievements : ["first_win"];
 
-    // Safety check
-    if (!scenario) {
-        console.error("EduStrategist: No scenario received.");
-        return;
+    if (UI.elements.achievementsGrid) {
+        UI.elements.achievementsGrid.innerHTML = ACHIEVEMENTS.map(badge => {
+            const isUnlocked = unlocked.includes(badge.id);
+            return `
+                <div class="achievement-badge ${isUnlocked ? 'unlocked' : 'locked'}">
+                    <span class="badge-icon">${badge.icon}</span>
+                    <strong>${badge.name}</strong>
+                    <small>${badge.description}</small>
+                </div>
+            `;
+        }).join('');
     }
-
-    console.log("Current Scenario:", scenario);
-
-    // Scenario information
-    UI.elements.scenarioCategory.textContent =
-        scenario.category || "SCENARIO";
-
-    UI.elements.scenarioConcept.textContent =
-        scenario.concept || "STRATEGY";
-
-    UI.elements.scenarioTitle.textContent =
-        scenario.title || "Untitled Scenario";
-
-    UI.elements.scenarioDescription.textContent =
-        scenario.description || "Make your strategic decision.";
-
-    // Make sure scenario information is visible
-    UI.elements.scenarioCategory.style.display = "";
-    UI.elements.scenarioConcept.style.display = "";
-    UI.elements.scenarioTitle.style.display = "";
-    UI.elements.scenarioDescription.style.display = "";
-
-    // Render strategy choices
-    renderStrategies();
-
-    // Render previous decisions
-    renderStrategyHistory();
-
-    // Reset timer display
-    updateTimerDisplay(15);
 }
 
 /* =========================================================
-   STRATEGIES
-   ========================================================= */
-
-function renderStrategies() {
-
-    const strategies = getAllStrategies();
-
-    UI.selectedStrategy = null;
-
-    UI.elements.strategyOptions.innerHTML = "";
-
-    strategies.forEach(strategy => {
-
-        const button = document.createElement("button");
-
-        button.className = "strategy-card";
-
-        button.type = "button";
-
-        button.dataset.strategy = strategy.id;
-
-        button.innerHTML = `
-            <span class="strategy-icon">${strategy.icon}</span>
-            <span class="strategy-content">
-                <span class="strategy-name">${escapeHTML(strategy.name)}</span>
-                <span class="strategy-description">
-                    ${escapeHTML(strategy.description)}
-                </span>
-            </span>
-        `;
-
-        UI.elements.strategyOptions.appendChild(button);
-    });
-
-    UI.elements.confirmStrategyButton.disabled = true;
-}
-
-
-function selectStrategy(strategyId) {
-
-    const strategy = getAllStrategies()
-        .find(item => item.id === strategyId);
-
-    if (!strategy) {
-        return;
-    }
-
-    UI.selectedStrategy = strategyId;
-
-    document.querySelectorAll(".strategy-card").forEach(card => {
-
-        card.classList.toggle(
-            "selected",
-            card.dataset.strategy === strategyId
-        );
-    });
-
-    UI.elements.confirmStrategyButton.disabled = false;
-
-    playSound("select");
-}
-
-
-function disableStrategySelection() {
-
-    document.querySelectorAll(".strategy-card").forEach(card => {
-        card.disabled = true;
-        card.classList.add("disabled");
-    });
-
-    UI.elements.confirmStrategyButton.disabled = true;
-}
-
-
-function enableStrategySelection() {
-
-    document.querySelectorAll(".strategy-card").forEach(card => {
-        card.disabled = false;
-        card.classList.remove("disabled");
-    });
-
-    UI.elements.confirmStrategyButton.disabled =
-        !UI.selectedStrategy;
-}
-
-
-/* =========================================================
-   STRATEGY HISTORY
-   ========================================================= */
-
-function renderStrategyHistory() {
-
-    const game = EduStrategistGame.getState();
-
-    UI.elements.strategyHistory.innerHTML = "";
-
-    if (!game.playerHistory.length) {
-
-        UI.elements.strategyHistory.innerHTML = `
-            <span class="history-empty">
-                No decisions yet
-            </span>
-        `;
-
-        return;
-    }
-
-    game.playerHistory.forEach((strategyId, index) => {
-
-        const strategy = getAllStrategies()
-            .find(item => item.id === strategyId);
-
-        if (!strategy) {
-            return;
-        }
-
-        const item = document.createElement("div");
-
-        item.className = "history-item";
-
-        item.innerHTML = `
-            <span class="history-round">R${index + 1}</span>
-            <span class="history-icon">${strategy.icon}</span>
-            <span class="history-name">
-                ${escapeHTML(strategy.name)}
-            </span>
-        `;
-
-        UI.elements.strategyHistory.appendChild(item);
-    });
-}
-
-
-/* =========================================================
-   TIMER
-   ========================================================= */
-
-function updateTimerDisplay(seconds) {
-
-    const safeSeconds = Math.max(0, Math.ceil(seconds));
-
-    UI.elements.timer.textContent = safeSeconds;
-
-    const percentage = (safeSeconds / 15) * 100;
-
-    UI.elements.timerProgress.style.width =
-        `${percentage}%`;
-
-    UI.elements.timer.classList.remove(
-        "warning",
-        "danger"
-    );
-
-    if (safeSeconds <= 5) {
-        UI.elements.timer.classList.add("danger");
-    } else if (safeSeconds <= 8) {
-        UI.elements.timer.classList.add("warning");
-    }
-}
-
-
-/* =========================================================
-   AI THINKING
-   ========================================================= */
-
-function showAIThinking() {
-
-    showScreen("thinking");
-
-    playSound("thinking");
-}
-
-
-function hideAIThinking() {
-    // The result screen is opened immediately afterwards.
-}
-
-
-/* =========================================================
-   ROUND RESULT
-   ========================================================= */
-
-function showRoundResult(result) {
-
-    if (!result) {
-        return;
-    }
-
-    let title = "DRAW";
-
-    if (result.winner === "player") {
-        title = "YOU WIN";
-        playSound("win");
-    } else if (result.winner === "ai") {
-        title = "AI WINS";
-        playSound("lose");
-    } else {
-        playSound("draw");
-    }
-
-    UI.elements.resultTitle.textContent = title;
-
-    UI.elements.resultPlayerStrategy.textContent =
-        formatStrategy(result.playerStrategy);
-
-    UI.elements.resultAIStrategy.textContent =
-        formatStrategy(result.aiStrategy);
-
-    UI.elements.roundPlayerPoints.textContent =
-        `+${result.playerPoints}`;
-
-    UI.elements.roundAIPoints.textContent =
-        `+${result.aiPoints}`;
-
-    UI.elements.strategicInsight.textContent =
-        result.insight;
-
-    UI.elements.resultConcept.textContent =
-        result.concept;
-
-    showScreen("result");
-}
-
-
-/* =========================================================
-   FINAL RESULT
-   ========================================================= */
-
-function showFinalResult(gameState) {
-
-    if (!gameState) {
-        gameState = EduStrategistGame.getState();
-    }
-
-    let title = "DRAW";
-    let subtitle = "An evenly matched strategic battle.";
-
-    if (gameState.playerScore > gameState.aiScore) {
-
-        title = "VICTORY";
-
-        subtitle =
-            "You outplayed the AI through strategic decision-making.";
-
-        playSound("victory");
-
-    } else if (gameState.aiScore > gameState.playerScore) {
-
-        title = "DEFEAT";
-
-        subtitle =
-            "The AI had the stronger strategy this time.";
-
-        playSound("defeat");
-    }
-
-    UI.elements.finalResultTitle.textContent = title;
-
-    UI.elements.finalResultSubtitle.textContent = subtitle;
-
-    UI.elements.finalPlayerScore.textContent =
-        gameState.playerScore;
-
-    UI.elements.finalAIScore.textContent =
-        gameState.aiScore;
-
-    renderPerformance(gameState.performance);
-
-    renderConcepts(gameState.conceptsLearned);
-
-    showScreen("final");
-}
-
-
-/* =========================================================
-   PERFORMANCE
-   ========================================================= */
-
-function renderPerformance(performance) {
-
-    if (!performance) {
-        return;
-    }
-
-    const prediction = clamp(performance.prediction);
-    const adaptability = clamp(performance.adaptability);
-    const risk = clamp(performance.risk);
-    const decision = clamp(performance.decision);
-    const overall = clamp(performance.overall);
-
-    UI.elements.performanceTotal.textContent =
-        `${Math.round(overall)}%`;
-
-    UI.elements.performancePrediction.textContent =
-        `${Math.round(prediction)}%`;
-
-    UI.elements.performanceAdaptability.textContent =
-        `${Math.round(adaptability)}%`;
-
-    UI.elements.performanceRisk.textContent =
-        `${Math.round(risk)}%`;
-
-    UI.elements.performanceDecision.textContent =
-        `${Math.round(decision)}%`;
-
-    UI.elements.barPrediction.style.width =
-        `${prediction}%`;
-
-    UI.elements.barAdaptability.style.width =
-        `${adaptability}%`;
-
-    UI.elements.barRisk.style.width =
-        `${risk}%`;
-
-    UI.elements.barDecision.style.width =
-        `${decision}%`;
-}
-
-
-/* =========================================================
-   CONCEPTS
-   ========================================================= */
-
-function renderConcepts(concepts) {
-
-    UI.elements.conceptsLearned.innerHTML = "";
-
-    if (!concepts || !concepts.length) {
-
-        UI.elements.conceptsLearned.innerHTML = `
-            <span class="concept-tag">
-                Keep playing to learn strategic concepts.
-            </span>
-        `;
-
-        return;
-    }
-
-    concepts.forEach(concept => {
-
-        const tag = document.createElement("span");
-
-        tag.className = "concept-tag";
-
-        tag.textContent = concept;
-
-        UI.elements.conceptsLearned.appendChild(tag);
-    });
-}
-
-
-/* =========================================================
-   LEADERBOARD
+   LEADERBOARD & UTILITIES
    ========================================================= */
 
 function renderLeaderboard() {
-
-    const leaderboard =
-        EduStrategistGame.getLeaderboard();
-
-    UI.elements.leaderboardList.innerHTML = "";
-
-    if (!leaderboard.length) {
-
-        UI.elements.leaderboardList.innerHTML = `
-            <div class="leaderboard-empty">
-                <p>No scores yet.</p>
-                <span>Complete a game to enter the leaderboard.</span>
-            </div>
-        `;
-
+    if (!UI.elements.leaderboardList) return;
+    const history = EduStrategistGame.getLeaderboard();
+    if (!history || history.length === 0) {
+        UI.elements.leaderboardList.innerHTML = `<p class="empty-msg">No game history recorded yet.</p>`;
         return;
     }
 
-    leaderboard.forEach((entry, index) => {
-
-        const item = document.createElement("div");
-
-        item.className = "leaderboard-entry";
-
-        const difficulty =
-            entry.difficulty
-                ? entry.difficulty.toUpperCase()
-                : "MEDIUM";
-
-        item.innerHTML = `
-            <div class="leaderboard-rank">
-                #${index + 1}
+    UI.elements.leaderboardList.innerHTML = history.map((rec, idx) => `
+        <div class="leaderboard-item">
+            <div class="item-rank">#${idx + 1}</div>
+            <div class="item-details">
+                <strong>${rec.winner || 'Player'} Won</strong>
+                <small>${rec.date} • Mode: ${rec.mode || 'Classic'}</small>
+                <div class="scores-summary">${rec.scores || ''}</div>
             </div>
-
-            <div class="leaderboard-player">
-                <strong>${escapeHTML(entry.name)}</strong>
-                <span>${difficulty}</span>
-            </div>
-
-            <div class="leaderboard-score">
-                ${entry.score}
-            </div>
-        `;
-
-        UI.elements.leaderboardList.appendChild(item);
-    });
+        </div>
+    `).join('');
 }
 
+function showScreen(screenKey) {
+    document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+    const screenMap = {
+        mainMenu: UI.elements.mainMenuScreen,
+        setup: UI.elements.setupScreen,
+        game: UI.elements.gameScreen,
+        thinking: UI.elements.thinkingScreen,
+        result: UI.elements.resultScreen,
+        final: UI.elements.finalScreen,
+        learn: UI.elements.learnScreen,
+        modes: UI.elements.modesScreen,
+        profile: UI.elements.profileScreen,
+        howToPlay: UI.elements.howToPlayScreen,
+        leaderboard: UI.elements.leaderboardScreen,
+        settings: UI.elements.settingsScreen
+    };
 
-/* =========================================================
-   SETTINGS
-   ========================================================= */
-
-function initializeSettingsUI() {
-
-    const soundSetting =
-        localStorage.getItem("edustrategist_sound");
-
-    const musicSetting =
-        localStorage.getItem("edustrategist_music");
-
-    UI.elements.toggleSound.checked =
-        soundSetting === null
-            ? true
-            : soundSetting === "true";
-
-    UI.elements.toggleMusic.checked =
-        musicSetting === null
-            ? true
-            : musicSetting === "true";
+    if (screenMap[screenKey]) {
+        screenMap[screenKey].classList.add("active");
+    }
 }
-
-
-/* =========================================================
-   TOAST
-   ========================================================= */
 
 function showToast(message) {
-
-    if (!UI.elements.toast) {
-        return;
-    }
-
+    if (!UI.elements.toast || !UI.elements.toastMessage) return;
     UI.elements.toastMessage.textContent = message;
-
-    UI.elements.toast.classList.add("show");
-
-    clearTimeout(UI.toastTimeout);
-
+    UI.elements.toast.classList.add("active");
+    if (UI.toastTimeout) clearTimeout(UI.toastTimeout);
     UI.toastTimeout = setTimeout(() => {
-
-        UI.elements.toast.classList.remove("show");
-
-    }, 2500);
+        UI.elements.toast.classList.remove("active");
+    }, 3000);
 }
 
+function openModal(title, message, onConfirm) {
+    if (!UI.elements.modal) return;
+    if (UI.elements.modalTitle) UI.elements.modalTitle.textContent = title;
+    if (UI.elements.modalMessage) UI.elements.modalMessage.textContent = message;
+    UI.modalConfirmAction = onConfirm;
 
-/* =========================================================
-   MODAL
-   ========================================================= */
-
-function openModal(title, message, confirmAction) {
-
-    UI.elements.modalTitle.textContent = title;
-
-    UI.elements.modalMessage.textContent = message;
-
-    UI.modalConfirmAction = confirmAction;
-
-    UI.elements.modal.classList.add("show");
-}
-
-
-function closeModal() {
-
-    UI.elements.modal.classList.remove("show");
-
-    UI.modalConfirmAction = null;
-}
-
-
-/* =========================================================
-   SOUND SYSTEM
-   ========================================================= */
-
-function getAudioContext() {
-
-    if (!UI.audioContext) {
-
-        const AudioContext =
-            window.AudioContext ||
-            window.webkitAudioContext;
-
-        if (!AudioContext) {
-            return null;
-        }
-
-        UI.audioContext = new AudioContext();
+    if (UI.elements.modalCancel) {
+        UI.elements.modalCancel.onclick = () => UI.elements.modal.classList.remove("active");
+    }
+    if (UI.elements.modalConfirm) {
+        UI.elements.modalConfirm.onclick = () => {
+            UI.elements.modal.classList.remove("active");
+            if (typeof UI.modalConfirmAction === "function") UI.modalConfirmAction();
+        };
     }
 
-    if (UI.audioContext.state === "suspended") {
-        UI.audioContext.resume();
-    }
-
-    return UI.audioContext;
+    UI.elements.modal.classList.add("active");
 }
-
 
 function playSound(type) {
+    try {
+        if (!UI.audioContext) {
+            const AudioCtx = window.AudioContext || window.webkitAudioContext;
+            if (AudioCtx) UI.audioContext = new AudioCtx();
+        }
+        if (!UI.audioContext) return;
 
-    const soundEnabled =
-        UI.elements.toggleSound
-            ? UI.elements.toggleSound.checked
-            : true;
+        const osc = UI.audioContext.createOscillator();
+        const gain = UI.audioContext.createGain();
+        osc.connect(gain);
+        gain.connect(UI.audioContext.destination);
 
-    if (!soundEnabled) {
-        return;
-    }
-
-    const audio = getAudioContext();
-
-    if (!audio) {
-        return;
-    }
-
-    const oscillator = audio.createOscillator();
-    const gain = audio.createGain();
-
-    oscillator.connect(gain);
-    gain.connect(audio.destination);
-
-    let frequency = 440;
-    let duration = 0.08;
-    let wave = "sine";
-
-    switch (type) {
-
-        case "click":
-            frequency = 420;
-            duration = 0.06;
-            break;
-
-        case "select":
-            frequency = 560;
-            duration = 0.08;
-            break;
-
-        case "start":
-            frequency = 620;
-            duration = 0.12;
-            wave = "triangle";
-            break;
-
-        case "success":
-            frequency = 720;
-            duration = 0.14;
-            wave = "triangle";
-            break;
-
-        case "win":
-            frequency = 760;
-            duration = 0.18;
-            wave = "triangle";
-            break;
-
-        case "victory":
-            frequency = 880;
-            duration = 0.3;
-            wave = "triangle";
-            break;
-
-        case "lose":
-            frequency = 240;
-            duration = 0.18;
-            break;
-
-        case "defeat":
-            frequency = 180;
-            duration = 0.3;
-            break;
-
-        case "draw":
-            frequency = 400;
-            duration = 0.14;
-            break;
-
-        case "error":
-            frequency = 160;
-            duration = 0.16;
-            wave = "square";
-            break;
-
-        case "thinking":
-            frequency = 330;
-            duration = 0.08;
-            break;
-
-        case "tick":
-            frequency = 800;
-            duration = 0.035;
-            break;
-
-        default:
-            frequency = 440;
-            duration = 0.08;
-    }
-
-    oscillator.type = wave;
-
-    oscillator.frequency.setValueAtTime(
-        frequency,
-        audio.currentTime
-    );
-
-    gain.gain.setValueAtTime(
-        0.0001,
-        audio.currentTime
-    );
-
-    gain.gain.exponentialRampToValueAtTime(
-        0.08,
-        audio.currentTime + 0.01
-    );
-
-    gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        audio.currentTime + duration
-    );
-
-    oscillator.start();
-
-    oscillator.stop(
-        audio.currentTime + duration + 0.02
-    );
+        const now = UI.audioContext.currentTime;
+        if (type === "click" || type === "select") {
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.08);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.08);
+            osc.start(now);
+            osc.stop(now + 0.08);
+        } else if (type === "tick") {
+            osc.frequency.setValueAtTime(600, now);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.01, now + 0.05);
+            osc.start(now);
+            osc.stop(now + 0.05);
+        }
+    } catch (e) { }
 }
 
-
-/* =========================================================
-   HELPERS
-   ========================================================= */
-
-function formatStrategy(strategyId) {
-
-    const strategy =
-        getAllStrategies().find(
-            item => item.id === strategyId
-        );
-
-    return strategy
-        ? strategy.name
-        : strategyId;
-}
-
-
-function clamp(value) {
-
-    return Math.max(
-        0,
-        Math.min(
-            100,
-            Number(value) || 0
-        )
-    );
-}
-
-
-function escapeHTML(value) {
-
-    return String(value)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-}
-
-
-/* =========================================================
-   GLOBAL UI API
-   ========================================================= */
-
-window.EduStrategistUI = {
-
-    showScreen,
-    updateGameUI,
-
-    renderStrategies,
-    selectStrategy,
-    disableStrategySelection,
-    enableStrategySelection,
-
-    renderStrategyHistory,
-    updateTimerDisplay,
-
-    showAIThinking,
-    hideAIThinking,
-
-    showRoundResult,
-    showFinalResult,
-
-    renderPerformance,
-    renderConcepts,
-
-    renderLeaderboard,
-    initializeSettingsUI,
-
-    showToast,
-    openModal,
-    closeModal,
-
-    playSound
-};
+initializeUI();

@@ -1,160 +1,107 @@
 <!DOCTYPE html>
-
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>EduStrategist</title>
+    <title>EduStrategist — AI Game Theory Platform</title>
 
+    <link rel="stylesheet" href="style.css">
 
-<link rel="stylesheet" href="style.css">
-
-<script src="data.js" defer></script>
-<script src="game.js" defer></script>
-<script src="ui.js" defer></script>
-
-
+    <script src="data.js" defer></script>
+    <script src="game.js" defer></script>
+    <script src="ui.js" defer></script>
 </head>
-
 <body>
-
 
 <!-- =========================
      MAIN MENU
 ========================== -->
 <main id="screen-menu" class="screen active">
-
     <div class="menu-container">
-
         <div class="game-logo">
             <div class="logo-mark">ES</div>
-
             <h1>EDU<span>STRATEGIST</span></h1>
-
-            <p>
-                Think. Adapt. Outsmart.
-            </p>
+            <p>1–4 Player AI Game Theory Strategy & Learning Platform</p>
         </div>
 
         <div class="menu-buttons">
-
             <button id="btn-play" class="primary-btn">
-                PLAY GAME
+                ⚔️ PLAY GAME (1–4 PLAYERS)
             </button>
-
+            <button id="btn-learn" class="secondary-btn">
+                📚 LEARN GAME THEORY
+            </button>
+            <button id="btn-modes" class="secondary-btn">
+                🎮 GAME MODES & BOSSES
+            </button>
+            <button id="btn-achievements" class="secondary-btn">
+                🏆 PROFILE & ACHIEVEMENTS
+            </button>
             <button id="btn-how-to-play" class="secondary-btn">
-                HOW TO PLAY
+                📖 HOW TO PLAY
             </button>
-
             <button id="btn-leaderboard" class="secondary-btn">
-                LEADERBOARD
+                🏅 LEADERBOARD
             </button>
-
             <button id="btn-settings" class="secondary-btn">
-                SETTINGS
+                ⚙️ SETTINGS
             </button>
-
         </div>
 
         <div class="menu-footer">
-            GAME-THEORETIC STRATEGY BATTLE
+            GAME-THEORETIC MULTIPLAYER BATTLE ARENA
         </div>
-
     </div>
-
 </main>
 
 
 <!-- =========================
-     PLAYER SETUP
+     PLAYER SETUP (1–4 PLAYERS)
 ========================== -->
 <section id="screen-setup" class="screen">
-
     <div class="setup-container">
-
         <div class="screen-header">
-            <span class="eyebrow">PLAYER SETUP</span>
-            <h2>Enter the Arena</h2>
-            <p>
-                Choose your difficulty and prepare to outthink the AI.
-            </p>
+            <span class="eyebrow">MULTIPLAYER SETUP</span>
+            <h2>Enter the Strategy Arena</h2>
+            <p>Configure 1 to 4 players, select avatars, colors, and AI personalities.</p>
         </div>
 
-        <div class="form-group">
-
-            <label for="player-name">
-                PLAYER NAME
-            </label>
-
-            <input
-                type="text"
-                id="player-name"
-                maxlength="20"
-                placeholder="Enter your name"
-                autocomplete="off"
-            >
-
-            <span id="name-error" class="error-message"></span>
-
-        </div>
-
-
-        <div class="difficulty-section">
-
-            <label>
-                AI DIFFICULTY
-            </label>
-
-            <div class="difficulty-grid">
-
-                <button
-                    class="difficulty-card selected"
-                    data-difficulty="easy"
-                >
-                    <span class="difficulty-number">01</span>
-                    <strong>EASY</strong>
-                    <small>
-                        Mostly random decisions
-                    </small>
-                </button>
-
-                <button
-                    class="difficulty-card"
-                    data-difficulty="medium"
-                >
-                    <span class="difficulty-number">02</span>
-                    <strong>MEDIUM</strong>
-                    <small>
-                        Learns from your choices
-                    </small>
-                </button>
-
-                <button
-                    class="difficulty-card"
-                    data-difficulty="hard"
-                >
-                    <span class="difficulty-number">03</span>
-                    <strong>HARD</strong>
-                    <small>
-                        Strategic and adaptive
-                    </small>
-                </button>
-
+        <!-- PLAYER COUNT TABS -->
+        <div class="player-count-section">
+            <label>NUMBER OF PLAYERS</label>
+            <div class="player-count-grid">
+                <button class="count-btn active" data-count="1">👤 1 Player</button>
+                <button class="count-btn" data-count="2">👥 2 Players</button>
+                <button class="count-btn" data-count="3">👥 3 Players</button>
+                <button class="count-btn" data-count="4">👥 4 Players</button>
             </div>
-
         </div>
 
+        <!-- DYNAMIC PLAYER CARDS -->
+        <div id="players-setup-container" class="players-setup-grid">
+            <!-- Rendered by ui.js -->
+        </div>
+
+        <!-- GAME MODE SELECTOR -->
+        <div class="form-group mode-select-group">
+            <label>SELECTED GAME MODE</label>
+            <select id="setup-mode-select" class="custom-select">
+                <option value="classic">Classic (5 Rounds)</option>
+                <option value="time_attack">⚡ Time Attack (10s Timer)</option>
+                <option value="survival">☠️ Survival (Elimination)</option>
+                <option value="endless">🔥 Endless Mode</option>
+                <option value="predictor">🔮 Predictor Challenge</option>
+            </select>
+        </div>
 
         <button id="btn-start-game" class="primary-btn">
-            START GAME
+            🚀 START BATTLE
         </button>
 
         <button class="text-btn" data-back>
             ← BACK TO MENU
         </button>
-
     </div>
-
 </section>
 
 
@@ -162,185 +109,109 @@
      GAME SCREEN
 ========================== -->
 <section id="screen-game" class="screen">
-
     <div class="game-container">
-
         <!-- TOP BAR -->
         <header class="game-header">
-
             <div class="game-brand">
                 <strong>EDUSTRATEGIST</strong>
+                <span id="game-mode-badge" class="mode-badge">CLASSIC</span>
             </div>
 
             <div class="round-counter">
-                ROUND
-                <strong id="current-round">1</strong>
-                /
-                <span id="total-rounds">5</span>
+                ROUND <strong id="current-round">1</strong> / <span id="total-rounds">5</span>
             </div>
 
-            <div class="score-board">
-
-                <div class="score-player">
-                    <span>YOU</span>
-                    <strong id="player-score">0</strong>
-                </div>
-
-                <div class="score-divider">
-                    VS
-                </div>
-
-                <div class="score-ai">
-                    <span>AI</span>
-                    <strong id="ai-score">0</strong>
-                </div>
-
-            </div>
-
+            <button id="btn-hint" class="hint-btn">
+                💡 HINT (<span id="hints-count">2</span>)
+            </button>
         </header>
 
+        <!-- MULTIPLAYER LIVE SCOREBOARD -->
+        <div id="live-scoreboard" class="scoreboard-multiplayer">
+            <!-- Generated dynamically by ui.js -->
+        </div>
 
         <!-- TIMER -->
         <div class="timer-container">
-
             <div class="timer-info">
                 <span>DECISION TIME</span>
                 <strong id="timer">15</strong>
             </div>
-
             <div class="timer-track">
-                <div
-                    id="timer-progress"
-                    class="timer-progress"
-                ></div>
+                <div id="timer-progress" class="timer-progress"></div>
             </div>
-
         </div>
 
+        <!-- TURN BANNER FOR SECRET SELECTION -->
+        <div id="turn-banner" class="turn-banner">
+            <span id="turn-avatar">🦁</span>
+            <span id="turn-player-name">Player 1</span>'s Turn to Choose Strategy
+        </div>
 
-        <!-- SCENARIO -->
+        <!-- SCENARIO CARD -->
         <div class="scenario-card">
-
             <div class="scenario-meta">
-
-                <span id="scenario-category">
-                    STRATEGY
-                </span>
-
-                <span class="meta-separator">
-                    •
-                </span>
-
-                <span id="scenario-concept">
-                    PAYOFF
-                </span>
-
+                <span id="scenario-category">STRATEGY</span>
+                <span class="meta-separator">•</span>
+                <span id="scenario-concept">PAYOFF</span>
             </div>
-
-            <h2 id="scenario-title">
-                Scenario Title
-            </h2>
-
-            <p id="scenario-description">
-                Scenario description will appear here.
-            </p>
-
+            <h2 id="scenario-title">Scenario Title</h2>
+            <p id="scenario-description">Scenario description will appear here.</p>
         </div>
 
+        <!-- AI PREDICTION WIDGET -->
+        <div id="prediction-section" class="prediction-section">
+            <div class="section-heading compact">
+                <span class="eyebrow">PREDICTION BONUS (+2 PTS)</span>
+                <h4>Predict Opponent Strategy:</h4>
+            </div>
+            <div id="prediction-options" class="prediction-grid">
+                <!-- Generated by ui.js -->
+            </div>
+        </div>
 
         <!-- STRATEGIES -->
         <div class="strategy-section">
-
             <div class="section-heading">
-
                 <div>
-                    <span class="eyebrow">
-                        YOUR DECISION
-                    </span>
-
-                    <h3>
-                        Choose Your Strategy
-                    </h3>
+                    <span class="eyebrow">SECRET STRATEGY SELECTION</span>
+                    <h3>Choose Your Move</h3>
                 </div>
-
-                <span class="selection-hint">
-                    Select one
-                </span>
-
+                <span id="strategy-explanation-tip" class="selection-hint">Select a strategy card</span>
             </div>
 
-
-            <div
-                id="strategy-options"
-                class="strategy-grid"
-            >
+            <div id="strategy-options" class="strategy-grid">
                 <!-- Generated by ui.js -->
             </div>
 
-
-            <button
-                id="btn-confirm-strategy"
-                class="primary-btn"
-                disabled
-            >
-                CONFIRM STRATEGY
+            <button id="btn-confirm-strategy" class="primary-btn" disabled>
+                🔒 LOCK STRATEGY
             </button>
-
         </div>
-
 
         <!-- HISTORY -->
         <div class="history-section">
-
             <div class="section-heading compact">
-
-                <span class="eyebrow">
-                    YOUR HISTORY
-                </span>
-
+                <span class="eyebrow">ROUND HISTORY</span>
             </div>
-
-            <div
-                id="strategy-history"
-                class="strategy-history"
-            >
-                <!-- Generated by ui.js -->
-            </div>
-
+            <div id="strategy-history" class="strategy-history"></div>
         </div>
-
     </div>
-
 </section>
 
 
 <!-- =========================
-     AI THINKING SCREEN
+     THINKING OVERLAY
 ========================== -->
 <section id="screen-thinking" class="screen overlay-screen">
-
     <div class="thinking-container">
-
         <div class="thinking-loader">
-
             <div class="loader-ring"></div>
-
         </div>
-
-        <span class="eyebrow">
-            AI ANALYSIS
-        </span>
-
-        <h2>
-            Your opponent is thinking...
-        </h2>
-
-        <p>
-            Analyzing your previous decisions.
-        </p>
-
+        <span class="eyebrow">SECRET STRATEGY LOCK</span>
+        <h2>Locking choices...</h2>
+        <p>Calculating game theory payoffs and opponent decisions.</p>
     </div>
-
 </section>
 
 
@@ -348,288 +219,192 @@
      ROUND RESULT
 ========================== -->
 <section id="screen-result" class="screen">
-
     <div class="result-container">
-
         <div class="result-header">
-
-            <span class="eyebrow">
-                ROUND RESULT
-            </span>
-
-            <h2 id="result-title">
-                ROUND COMPLETE
-            </h2>
-
+            <span class="eyebrow">REVEAL & PAYOFFS</span>
+            <h2 id="result-title">ROUND REVEAL</h2>
         </div>
 
-
-        <div class="battle-result">
-
-            <div class="result-player">
-
-                <span>YOUR STRATEGY</span>
-
-                <strong id="result-player-strategy">
-                    DEFEND
-                </strong>
-
-                <div
-                    id="round-player-points"
-                    class="result-points"
-                >
-                    +0
-                </div>
-
-            </div>
-
-
-            <div class="result-vs">
-                VS
-            </div>
-
-
-            <div class="result-ai">
-
-                <span>AI STRATEGY</span>
-
-                <strong id="result-ai-strategy">
-                    ATTACK
-                </strong>
-
-                <div
-                    id="round-ai-points"
-                    class="result-points"
-                >
-                    +0
-                </div>
-
-            </div>
-
+        <!-- MULTIPLAYER REVEAL CARDS -->
+        <div id="multiplayer-reveal-grid" class="reveal-grid">
+            <!-- Generated dynamically by ui.js -->
         </div>
-
 
         <div class="insight-card">
-
-            <span class="eyebrow">
-                STRATEGIC INSIGHT
-            </span>
-
-            <p id="strategic-insight">
-                Strategic insight will appear here.
-            </p>
-
+            <span class="eyebrow">AI STRATEGIC REASONING & WHY IT CHOSE THIS</span>
+            <p id="strategic-insight">Strategic insight will appear here.</p>
         </div>
-
 
         <div class="concept-card">
-
-            <span class="eyebrow">
-                GAME THEORY CONCEPT
-            </span>
-
-            <strong id="result-concept">
-                PAYOFF
-            </strong>
-
+            <span class="eyebrow">GAME THEORY CONCEPT</span>
+            <strong id="result-concept">PAYOFF MATRIX</strong>
         </div>
 
+        <!-- LIVE STANDINGS TABLE -->
+        <div class="standings-card">
+            <span class="eyebrow">LIVE LEADERBOARD STANDINGS</span>
+            <div id="live-standings-table"></div>
+        </div>
 
-        <button
-            id="btn-next-round"
-            class="primary-btn"
-        >
+        <button id="btn-next-round" class="primary-btn">
             NEXT ROUND →
         </button>
-
     </div>
-
 </section>
 
 
 <!-- =========================
-     FINAL RESULTS
+     FINAL RESULTS & PODIUM
 ========================== -->
 <section id="screen-final" class="screen">
-
     <div class="final-container">
-
         <div class="final-header">
-
-            <span class="eyebrow">
-                GAME COMPLETE
-            </span>
-
-            <h1 id="final-result-title">
-                VICTORY
-            </h1>
-
-            <p id="final-result-subtitle">
-                You outplayed the strategist.
-            </p>
-
+            <span class="eyebrow">MATCH COMPLETE</span>
+            <h1 id="final-result-title">VICTORY!</h1>
+            <p id="final-result-subtitle">Final Standings & Strategy Breakdown</p>
         </div>
 
-
-        <div class="final-score">
-
-            <div class="final-player-score">
-
-                <span>YOUR SCORE</span>
-
-                <strong id="final-player-score">
-                    0
-                </strong>
-
-            </div>
-
-
-            <div class="final-vs">
-                —
-            </div>
-
-
-            <div class="final-ai-score">
-
-                <span>AI SCORE</span>
-
-                <strong id="final-ai-score">
-                    0
-                </strong>
-
-            </div>
-
+        <!-- MULTIPLAYER PODIUM -->
+        <div id="final-podium" class="podium-grid">
+            <!-- Generated by ui.js -->
         </div>
 
-
-        <!-- PERFORMANCE -->
+        <!-- PERFORMANCE ANALYTICS -->
         <div class="performance-section">
-
             <div class="section-heading compact">
-
-                <span class="eyebrow">
-                    PERFORMANCE
-                </span>
-
-                <strong id="performance-total">
-                    0%
-                </strong>
-
+                <span class="eyebrow">STRATEGY ANALYTICS</span>
+                <strong id="performance-total">0%</strong>
             </div>
-
 
             <div class="performance-item">
-
                 <div class="performance-label">
-                    <span>Prediction</span>
-                    <strong id="performance-prediction">
-                        0%
-                    </strong>
+                    <span>Prediction Accuracy</span>
+                    <strong id="performance-prediction">0%</strong>
                 </div>
-
                 <div class="performance-track">
-                    <div
-                        id="bar-prediction"
-                        class="performance-bar"
-                    ></div>
+                    <div id="bar-prediction" class="performance-bar"></div>
                 </div>
-
             </div>
-
 
             <div class="performance-item">
-
                 <div class="performance-label">
-                    <span>Adaptability</span>
-                    <strong id="performance-adaptability">
-                        0%
-                    </strong>
+                    <span>Cooperation Rate</span>
+                    <strong id="performance-adaptability">0%</strong>
                 </div>
-
                 <div class="performance-track">
-                    <div
-                        id="bar-adaptability"
-                        class="performance-bar"
-                    ></div>
+                    <div id="bar-adaptability" class="performance-bar"></div>
                 </div>
-
             </div>
-
 
             <div class="performance-item">
-
                 <div class="performance-label">
-                    <span>Risk Management</span>
-                    <strong id="performance-risk">
-                        0%
-                    </strong>
+                    <span>Risk & Aggression Level</span>
+                    <strong id="performance-risk">0%</strong>
                 </div>
-
                 <div class="performance-track">
-                    <div
-                        id="bar-risk"
-                        class="performance-bar"
-                    ></div>
+                    <div id="bar-risk" class="performance-bar"></div>
                 </div>
-
             </div>
-
-
-            <div class="performance-item">
-
-                <div class="performance-label">
-                    <span>Decision Making</span>
-                    <strong id="performance-decision">
-                        0%
-                    </strong>
-                </div>
-
-                <div class="performance-track">
-                    <div
-                        id="bar-decision"
-                        class="performance-bar"
-                    ></div>
-                </div>
-
-            </div>
-
         </div>
-
-
-        <!-- CONCEPTS -->
-        <div class="concepts-section">
-
-            <span class="eyebrow">
-                CONCEPTS LEARNED
-            </span>
-
-            <div id="concepts-learned">
-                <!-- Generated by ui.js -->
-            </div>
-
-        </div>
-
 
         <div class="final-actions">
+            <button id="btn-play-again" class="primary-btn">PLAY AGAIN</button>
+            <button id="btn-final-menu" class="secondary-btn">MAIN MENU</button>
+        </div>
+    </div>
+</section>
 
-            <button
-                id="btn-play-again"
-                class="primary-btn"
-            >
-                PLAY AGAIN
-            </button>
 
-            <button
-                id="btn-final-menu"
-                class="secondary-btn"
-            >
-                MAIN MENU
-            </button>
-
+<!-- =========================
+     LEARN GAME THEORY HUB
+========================== -->
+<section id="screen-learn" class="screen">
+    <div class="info-container">
+        <div class="screen-header">
+            <span class="eyebrow">EDUCATIONAL HUB</span>
+            <h2>📚 Learn Game Theory</h2>
+            <p>Master core game-theoretic concepts through interactive lessons and challenges.</p>
         </div>
 
-    </div>
+        <div id="learn-topics-nav" class="topics-nav">
+            <!-- Generated by ui.js -->
+        </div>
 
+        <div id="learn-topic-card" class="topic-card">
+            <!-- Generated by ui.js -->
+        </div>
+
+        <button class="text-btn" data-back>
+            ← BACK TO MENU
+        </button>
+    </div>
+</section>
+
+
+<!-- =========================
+     GAME MODES & BOSSES SCREEN
+========================== -->
+<section id="screen-modes" class="screen">
+    <div class="info-container">
+        <div class="screen-header">
+            <span class="eyebrow">ARENA MODES & BOSSES</span>
+            <h2>🎮 Game Modes & Boss Battles</h2>
+            <p>Challenge unique game modes or defeat legendary Game Theory AI Bosses!</p>
+        </div>
+
+        <div class="section-heading compact">
+            <span class="eyebrow">SELECT A BOSS TO FIGHT</span>
+        </div>
+
+        <div id="boss-grid" class="boss-grid">
+            <!-- Generated by ui.js -->
+        </div>
+
+        <button class="text-btn" data-back>
+            ← BACK TO MENU
+        </button>
+    </div>
+</section>
+
+
+<!-- =========================
+     ACHIEVEMENTS & PROFILE
+========================== -->
+<section id="screen-profile" class="screen">
+    <div class="info-container">
+        <div class="screen-header">
+            <span class="eyebrow">PLAYER DASHBOARD</span>
+            <h2>🏆 Achievements & Stats</h2>
+            <p>Track your wins, streaks, and unlocked badges.</p>
+        </div>
+
+        <div class="stats-overview-grid">
+            <div class="stat-card">
+                <span>WIN STREAK</span>
+                <strong id="stat-win-streak">0</strong>
+            </div>
+            <div class="stat-card">
+                <span>PREDICTION STREAK</span>
+                <strong id="stat-pred-streak">0</strong>
+            </div>
+            <div class="stat-card">
+                <span>BEST STREAK</span>
+                <strong id="stat-best-streak">0</strong>
+            </div>
+        </div>
+
+        <div class="section-heading compact">
+            <span class="eyebrow">UNLOCKED BADGES</span>
+        </div>
+
+        <div id="achievements-grid" class="achievements-grid">
+            <!-- Generated by ui.js -->
+        </div>
+
+        <button class="text-btn" data-back>
+            ← BACK TO MENU
+        </button>
+    </div>
 </section>
 
 
@@ -637,149 +412,40 @@
      HOW TO PLAY
 ========================== -->
 <section id="screen-how-to-play" class="screen">
-
     <div class="info-container">
-
         <div class="screen-header">
-
-            <span class="eyebrow">
-                GUIDE
-            </span>
-
-            <h2>
-                How To Play
-            </h2>
-
-            <p>
-                Learn the rules before entering the strategy arena.
-            </p>
-
+            <span class="eyebrow">GUIDE</span>
+            <h2>How To Play</h2>
+            <p>Learn the rules of 1–4 player Game Theory strategy battles.</p>
         </div>
-
 
         <div class="rules-grid">
-
             <div class="rule-card">
-
-                <span class="rule-number">
-                    01
-                </span>
-
-                <h3>
-                    Choose
-                </h3>
-
-                <p>
-                    Select one of four strategies before the timer
-                    reaches zero.
-                </p>
-
+                <span class="rule-number">01</span>
+                <h3>Setup</h3>
+                <p>Choose 1 to 4 players. Configure human or AI players with custom avatars and colors.</p>
             </div>
-
-
             <div class="rule-card">
-
-                <span class="rule-number">
-                    02
-                </span>
-
-                <h3>
-                    Predict
-                </h3>
-
-                <p>
-                    The AI secretly chooses its own strategy.
-                    Try to predict its behavior.
-                </p>
-
+                <span class="rule-number">02</span>
+                <h3>Secret Lock</h3>
+                <p>Each player privately selects a strategy card and locks their choice.</p>
             </div>
-
-
             <div class="rule-card">
-
-                <span class="rule-number">
-                    03
-                </span>
-
-                <h3>
-                    Score
-                </h3>
-
-                <p>
-                    Your strategy combination determines the
-                    payoff for the round.
-                </p>
-
+                <span class="rule-number">03</span>
+                <h3>Predict</h3>
+                <p>Optionally predict opponent choices to earn +2 bonus points!</p>
             </div>
-
-
             <div class="rule-card">
-
-                <span class="rule-number">
-                    04
-                </span>
-
-                <h3>
-                    Adapt
-                </h3>
-
-                <p>
-                    Learn from previous rounds and change your
-                    strategy when necessary.
-                </p>
-
+                <span class="rule-number">04</span>
+                <h3>Reveal & Score</h3>
+                <p>All strategies flip simultaneously. Payoffs are calculated and live leaderboards update.</p>
             </div>
-
         </div>
-
-
-        <div class="strategy-explanation">
-
-            <span class="eyebrow">
-                STRATEGIES
-            </span>
-
-            <div class="strategy-list">
-
-                <div class="strategy-info">
-                    <strong>INVEST</strong>
-                    <span>
-                        Take calculated risks for higher rewards.
-                    </span>
-                </div>
-
-                <div class="strategy-info">
-                    <strong>ATTACK</strong>
-                    <span>
-                        Exploit opportunities aggressively.
-                    </span>
-                </div>
-
-                <div class="strategy-info">
-                    <strong>COOPERATE</strong>
-                    <span>
-                        Build mutually beneficial outcomes.
-                    </span>
-                </div>
-
-                <div class="strategy-info">
-                    <strong>DEFEND</strong>
-                    <span>
-                        Reduce risk and protect your position.
-                    </span>
-                </div>
-
-            </div>
-
-        </div>
-
 
         <button class="text-btn" data-back>
             ← BACK TO MENU
         </button>
-
     </div>
-
 </section>
 
 
@@ -787,44 +453,17 @@
      LEADERBOARD
 ========================== -->
 <section id="screen-leaderboard" class="screen">
-
     <div class="leaderboard-container">
-
         <div class="screen-header">
-
-            <span class="eyebrow">
-                HALL OF STRATEGISTS
-            </span>
-
-            <h2>
-                Leaderboard
-            </h2>
-
+            <span class="eyebrow">HALL OF STRATEGISTS</span>
+            <h2>Leaderboard & History</h2>
         </div>
 
+        <div id="leaderboard-list" class="leaderboard-list"></div>
 
-        <div
-            id="leaderboard-list"
-            class="leaderboard-list"
-        >
-            <!-- Generated by ui.js -->
-        </div>
-
-
-        <button
-            id="btn-clear-leaderboard"
-            class="danger-btn"
-        >
-            CLEAR LEADERBOARD
-        </button>
-
-
-        <button class="text-btn" data-back>
-            ← BACK TO MENU
-        </button>
-
+        <button id="btn-clear-leaderboard" class="danger-btn">CLEAR LEADERBOARD</button>
+        <button class="text-btn" data-back>← BACK TO MENU</button>
     </div>
-
 </section>
 
 
@@ -832,148 +471,76 @@
      SETTINGS
 ========================== -->
 <section id="screen-settings" class="screen">
-
     <div class="settings-container">
-
         <div class="screen-header">
-
-            <span class="eyebrow">
-                CONFIGURATION
-            </span>
-
-            <h2>
-                Settings
-            </h2>
-
+            <span class="eyebrow">CONFIGURATION</span>
+            <h2>Settings</h2>
         </div>
-
 
         <div class="settings-list">
-
             <div class="setting-item">
-
                 <div>
-                    <strong>
-                        Sound Effects
-                    </strong>
-
-                    <small>
-                        Strategy and interface sounds
-                    </small>
+                    <strong>Sound Effects</strong>
+                    <small>Interface and strategy sounds</small>
                 </div>
-
                 <label class="toggle">
-                    <input
-                        type="checkbox"
-                        id="toggle-sound"
-                        checked
-                    >
+                    <input type="checkbox" id="toggle-sound" checked>
                     <span></span>
                 </label>
-
             </div>
-
-
             <div class="setting-item">
-
                 <div>
-                    <strong>
-                        Music
-                    </strong>
-
-                    <small>
-                        Background music
-                    </small>
+                    <strong>Music</strong>
+                    <small>Background music</small>
                 </div>
-
                 <label class="toggle">
-                    <input
-                        type="checkbox"
-                        id="toggle-music"
-                        checked
-                    >
+                    <input type="checkbox" id="toggle-music" checked>
                     <span></span>
                 </label>
-
             </div>
-
         </div>
 
-
-        <button
-            id="btn-reset-data"
-            class="danger-btn"
-        >
-            RESET ALL DATA
-        </button>
-
-
-        <button class="text-btn" data-back>
-            ← BACK TO MENU
-        </button>
-
+        <button id="btn-reset-data" class="danger-btn">RESET ALL DATA</button>
+        <button class="text-btn" data-back>← BACK TO MENU</button>
     </div>
-
 </section>
 
 
 <!-- =========================
-     TOAST
+     PASS TURN MODAL
 ========================== -->
-<div id="toast" class="toast">
-
-    <span id="toast-message">
-        Notification
-    </span>
-
+<div id="modal-pass-turn" class="modal">
+    <div class="modal-content text-center">
+        <div class="avatar-large" id="pass-avatar">🦁</div>
+        <h3 id="pass-title">Pass to Player 2</h3>
+        <p id="pass-message">Please pass the device to Player 2 to choose secretly.</p>
+        <button id="btn-unlock-pass-turn" class="primary-btn">
+            🔓 UNLOCK MY TURN
+        </button>
+    </div>
 </div>
 
 
 <!-- =========================
-     CONFIRMATION MODAL
+     TOAST & CONFIRMATION MODAL
 ========================== -->
-<div id="modal" class="modal">
-
-    <div class="modal-content">
-
-        <div class="modal-header">
-
-            <span class="eyebrow">
-                CONFIRMATION
-            </span>
-
-            <h3 id="modal-title">
-                Are you sure?
-            </h3>
-
-        </div>
-
-        <p id="modal-message">
-            This action cannot be undone.
-        </p>
-
-        <div class="modal-actions">
-
-            <button
-                id="modal-cancel"
-                class="secondary-btn"
-            >
-                CANCEL
-            </button>
-
-            <button
-                id="modal-confirm"
-                class="danger-btn"
-            >
-                CONFIRM
-            </button>
-
-        </div>
-
-    </div>
-
+<div id="toast" class="toast">
+    <span id="toast-message">Notification</span>
 </div>
 
+<div id="modal" class="modal">
+    <div class="modal-content">
+        <div class="modal-header">
+            <span class="eyebrow">CONFIRMATION</span>
+            <h3 id="modal-title">Are you sure?</h3>
+        </div>
+        <p id="modal-message">This action cannot be undone.</p>
+        <div class="modal-actions">
+            <button id="modal-cancel" class="secondary-btn">CANCEL</button>
+            <button id="modal-confirm" class="danger-btn">CONFIRM</button>
+        </div>
+    </div>
+</div>
 
 </body>
 </html>

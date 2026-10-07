@@ -1,1660 +1,495 @@
 /* =========================================================
-EDUSTRATEGIST
-Main Game Engine
-========================================================= */
-
-/* =========================================================
-CONFIGURATION
-========================================================= */
+   EDUSTRATEGIST - Game Engine & Multiplayer Logic
+   ========================================================= */
 
 const GAME_CONFIG = {
-
-
-TOTAL_ROUNDS: 5,
-
-ROUND_TIME: 15,
-
-AI_THINKING_TIME: 900,
-
-COMEBACK_THRESHOLD: 8,
-
-STORAGE_KEY: "edustrategist_data",
-
-LEADERBOARD_LIMIT: 10
-
-
+    TOTAL_ROUNDS: 5,
+    ROUND_TIME: 15,
+    AI_THINKING_TIME: 900,
+    COMEBACK_THRESHOLD: 8,
+    STORAGE_KEY: "edustrategist_data",
+    LEADERBOARD_LIMIT: 10
 };
-
-/* =========================================================
-GAME STATE
-========================================================= */
 
 const GAME = {
-
-
-phase: "idle",
-
-playerName: "",
-
-difficulty: AI_DIFFICULTY.MEDIUM,
-
-round: 0,
-
-totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
-
-playerScore: 0,
-
-aiScore: 0,
-
-scenarios: [],
-
-currentScenario: null,
-
-playerHistory: [],
-
-aiHistory: [],
-
-roundResults: [],
-
-conceptsLearned: [],
-
-performance: {
-
-    prediction: 0,
-
-    adaptability: 0,
-
-    risk: 0,
-
-    decision: 0,
-
-    overall: 0
-
-},
-
-comebackRound: false,
-
-timer: null,
-
-aiTimeout: null,
-
-gameStarted: false
-
-
+    phase: "idle",
+    playerCount: 1,
+    gameMode: "classic",
+    difficulty: AI_DIFFICULTY.MEDIUM,
+    aiPersonality: "adaptive",
+    boss: null,
+    players: [],
+    currentTurnIndex: 0,
+    round: 0,
+    totalRounds: GAME_CONFIG.TOTAL_ROUNDS,
+    scenarios: [],
+    currentScenario: null,
+    roundResults: [],
+    conceptsLearned: [],
+    hintsRemaining: 2,
+    streaks: { winStreak: 0, predictionStreak: 0, bestStreak: 0 },
+    performance: { prediction: 0, adaptability: 0, risk: 0, decision: 0, overall: 0 },
+    timer: null,
+    aiTimeout: null,
+    gameStarted: false
 };
 
 /* =========================================================
-INITIALIZATION
-========================================================= */
+   INITIALIZATION
+   ========================================================= */
 
 function initializeGame() {
-
-
-document.addEventListener(
-    "DOMContentLoaded",
-    () => {
-
-        if (
-            typeof initializeUI === "function"
-        ) {
-
+    document.addEventListener("DOMContentLoaded", () => {
+        if (typeof initializeUI === "function") {
             initializeUI();
-
         }
+        loadSavedData();
+    });
+}
 
-        loadSavedPlayer();
-
+function loadSavedData() {
+    const saved = getStoredData();
+    if (saved && saved.playerName && UI.elements.playerName) {
+        UI.elements.playerName.value = saved.playerName;
     }
-);
-
-
-}
-
-function loadSavedPlayer() {
-
-
-const saved =
-    getStoredData();
-
-if (
-    saved &&
-    saved.playerName &&
-    UI.elements.playerName
-) {
-
-    UI.elements.playerName.value =
-        saved.playerName;
-
-}
-
-
 }
 
 /* =========================================================
-START GAME
-========================================================= */
+   START GAME ENGINE
+   ========================================================= */
 
-function startGame(playerName) {
-
-
-if (
-    !playerName ||
-    !playerName.trim()
-) {
-
-    showToast("Please enter your name.");
-
-    return;
-
-}
-
-
-clearTimers();
-
-const cleanName =
-    playerName.trim().slice(0, 20);
-
-
-GAME.phase = "idle";
-
-GAME.playerName = cleanName;
-
-GAME.round = 0;
-
-GAME.playerScore = 0;
-
-GAME.aiScore = 0;
-
-GAME.playerHistory = [];
-
-GAME.aiHistory = [];
-
-GAME.roundResults = [];
-
-GAME.conceptsLearned = [];
-
-GAME.currentScenario = null;
-
-GAME.comebackRound = false;
-
-GAME.gameStarted = true;
-
-
-GAME.performance = {
-
-    prediction: 0,
-
-    adaptability: 0,
-
-    risk: 0,
-
-    decision: 0,
-
-    overall: 0
-
-};
-
-
-GAME.scenarios =
-    getGameScenarios(
-        GAME.totalRounds
-    );
-
-
-saveStoredData({
-
-    playerName: GAME.playerName,
-
-    difficulty: GAME.difficulty
-
-});
-
-
-UI.selectedStrategy = null;
-
-
-showScreen("game");
-
-
-startNextRound();
-
-
-}
-
-/* =========================================================
-NEXT ROUND
-========================================================= */
-
-function startNextRound() {
-
+function setupMultiplayerGame(playerConfigs, mode = "classic", selectedBoss = null) {
     clearTimers();
 
-    if (GAME.round >= GAME.totalRounds) {
+    GAME.gameMode = mode;
+    GAME.boss = selectedBoss;
+    GAME.playerCount = playerConfigs.length;
+    GAME.round = 0;
+    GAME.totalRounds = mode === "time_attack" ? 8 : (mode === "survival" ? 10 : 5);
+    GAME.roundResults = [];
+    GAME.conceptsLearned = [];
+    GAME.hintsRemaining = 2;
+    GAME.gameStarted = true;
+    GAME.phase = "choosing";
+
+    GAME.players = playerConfigs.map((cfg, idx) => ({
+        id: `p${idx + 1}`,
+        name: cfg.name || `Player ${idx + 1}`,
+        avatar: cfg.avatar || AVATARS[idx % AVATARS.length].icon,
+        color: cfg.color || PLAYER_COLORS[idx % PLAYER_COLORS.length].hex,
+        isAI: cfg.isAI || false,
+        personality: cfg.personality || "adaptive",
+        score: 0,
+        history: [],
+        currentStrategy: null,
+        currentPrediction: null,
+        predictionsCorrect: 0,
+        predictionsTotal: 0
+    }));
+
+    // Backwards compatibility for single player
+    GAME.playerName = GAME.players[0].name;
+    GAME.playerScore = 0;
+    GAME.aiScore = 0;
+
+    GAME.scenarios = getGameScenarios(GAME.totalRounds);
+    showScreen("game");
+    startNextRound();
+}
+
+function startGame(playerName) {
+    const cleanName = (playerName && playerName.trim()) ? playerName.trim().slice(0, 20) : "Player 1";
+    setupMultiplayerGame([
+        { name: cleanName, avatar: "🦁", color: "#00f0ff", isAI: false },
+        { name: GAME.boss ? GAME.boss.name : "AI Strategist", avatar: "🤖", color: "#ff007f", isAI: true, personality: GAME.aiPersonality }
+    ], GAME.gameMode, GAME.boss);
+}
+
+/* =========================================================
+   ROUND FLOW & SECRET LOCKING
+   ========================================================= */
+
+function startNextRound() {
+    clearTimers();
+
+    if (GAME.round >= GAME.totalRounds && GAME.gameMode !== "endless") {
         finishGame();
         return;
     }
 
-    showScreen("game");
-
+    GAME.round++;
+    GAME.currentScenario = GAME.scenarios[(GAME.round - 1) % GAME.scenarios.length];
+    GAME.currentTurnIndex = 0;
     GAME.phase = "choosing";
 
-    GAME.round++;
-
-    GAME.currentScenario =
-        GAME.scenarios[GAME.round - 1];
-
-    GAME.comebackRound = false;
-
-    checkComebackRound();
+    // Reset current choices
+    GAME.players.forEach(p => {
+        p.currentStrategy = null;
+        p.currentPrediction = null;
+    });
 
     UI.selectedStrategy = null;
+    showScreen("game");
+    updateGameUI(GAME.currentScenario, GAME.round, GAME.totalRounds, GAME.players);
+    startTurnForCurrentPlayer();
+}
 
-    updateGameUI(
-        GAME.currentScenario,
-        GAME.round,
-        GAME.totalRounds,
-        GAME.playerScore,
-        GAME.aiScore
+function startTurnForCurrentPlayer() {
+    if (GAME.currentTurnIndex >= GAME.players.length) {
+        processRoundReveal();
+        return;
+    }
+
+    const currentPlayer = GAME.players[GAME.currentTurnIndex];
+
+    if (currentPlayer.isAI) {
+        // AI selects strategy automatically
+        const opponentHistory = GAME.players.find(p => !p.isAI)?.history || [];
+        currentPlayer.currentStrategy = getAIDecision(currentPlayer.personality, opponentHistory, GAME.currentScenario);
+        GAME.currentTurnIndex++;
+        startTurnForCurrentPlayer();
+    } else {
+        // Human player turn: Enable secret strategy selection UI
+        updateTurnPromptUI(currentPlayer, GAME.currentTurnIndex, GAME.players.length);
+        enableStrategySelection();
+        if (GAME.gameMode === "time_attack") startGameTimer();
+    }
+}
+
+function lockPlayerStrategy(strategy, prediction = null) {
+    if (GAME.phase !== "choosing") return;
+
+    const currentPlayer = GAME.players[GAME.currentTurnIndex];
+    if (!currentPlayer || currentPlayer.isAI) return;
+
+    stopGameTimer();
+    playGameSound("select");
+
+    currentPlayer.currentStrategy = strategy;
+    currentPlayer.currentPrediction = prediction;
+    currentPlayer.history.push(strategy);
+
+    // Save legacy history compatibility
+    if (GAME.currentTurnIndex === 0) GAME.playerHistory = currentPlayer.history;
+
+    GAME.currentTurnIndex++;
+
+    if (GAME.currentTurnIndex < GAME.players.length) {
+        // Show pass screen if multiplayer
+        if (GAME.players.some(p => !p.isAI && p !== currentPlayer)) {
+            showPassTurnModal(GAME.players[GAME.currentTurnIndex], () => {
+                startTurnForCurrentPlayer();
+            });
+        } else {
+            startTurnForCurrentPlayer();
+        }
+    } else {
+        processRoundReveal();
+    }
+}
+
+function submitPlayerStrategy(strategy) {
+    lockPlayerStrategy(strategy, null);
+}
+
+/* =========================================================
+   REVEAL & PAYOFF EVALUATION
+   ========================================================= */
+
+function processRoundReveal() {
+    GAME.phase = "processing";
+    disableStrategySelection();
+
+    // AI choices for any remaining AI players
+    GAME.players.forEach(p => {
+        if (p.isAI && !p.currentStrategy) {
+            const oppHistory = GAME.players.find(other => !other.isAI)?.history || [];
+            p.currentStrategy = getAIDecision(p.personality, oppHistory, GAME.currentScenario);
+            p.history.push(p.currentStrategy);
+        }
+    });
+
+    const choices = GAME.players.map(p => p.currentStrategy || "cooperate");
+    const payoffs = calculateMultiplayerPayoffs(choices, GAME.currentScenario);
+
+    // Update scores & verify predictions
+    GAME.players.forEach((p, idx) => {
+        let roundGain = payoffs[idx];
+
+        // Prediction bonus (+2 points)
+        if (!p.isAI && p.currentPrediction) {
+            const oppStrategy = GAME.players.find(other => other !== p)?.currentStrategy;
+            if (p.currentPrediction.toLowerCase() === (oppStrategy || "").toLowerCase()) {
+                roundGain += 2;
+                p.predictionsCorrect++;
+                GAME.streaks.predictionStreak++;
+            } else {
+                GAME.streaks.predictionStreak = 0;
+            }
+            p.predictionsTotal++;
+        }
+
+        p.score += roundGain;
+    });
+
+    // Compatibility scores
+    GAME.playerScore = GAME.players[0]?.score || 0;
+    GAME.aiScore = GAME.players[1]?.score || 0;
+
+    const roundData = {
+        round: GAME.round,
+        scenario: GAME.currentScenario,
+        choices: [...choices],
+        payoffs: [...payoffs],
+        players: GAME.players.map(p => ({ ...p }))
+    };
+    GAME.roundResults.push(roundData);
+
+    // AI reasoning summary
+    const aiPlayer = GAME.players.find(p => p.isAI);
+    const aiReasoning = generateAIReasoning(
+        aiPlayer?.currentStrategy || "defend",
+        choices,
+        GAME.players[0]?.history || []
     );
 
-    enableStrategySelection();
-
-    startGameTimer();
+    setTimeout(() => {
+        GAME.phase = "result";
+        renderRoundResultsUI(roundData, aiReasoning);
+        showScreen("result");
+    }, GAME_CONFIG.AI_THINKING_TIME);
 }
 
 /* =========================================================
-COMEBACK
-========================================================= */
+   HINT & PREDICTION HELPERS
+   ========================================================= */
 
-function checkComebackRound() {
+function requestHint() {
+    if (GAME.hintsRemaining <= 0) {
+        showToast("No hints remaining!");
+        return null;
+    }
 
+    GAME.hintsRemaining--;
+    const aiPlayer = GAME.players.find(p => p.isAI);
+    if (!aiPlayer) return "Opponents are taking varied actions.";
 
-if (GAME.round <= 1) {
+    const history = aiPlayer.history;
+    if (history.length === 0) return "The AI tends to open with balanced strategies.";
 
-    return false;
+    const counts = countStrategies(history);
+    const mostUsed = Object.entries(counts).sort((a, b) => b[1] - a[1])[0][0];
 
-}
-
-const difference =
-    GAME.aiScore -
-    GAME.playerScore;
-
-return (
-    difference >=
-    GAME_CONFIG.COMEBACK_THRESHOLD
-);
-
-
+    return `💡 HINT: The opponent has chosen ${mostUsed.toUpperCase()} most frequently in past rounds.`;
 }
 
 /* =========================================================
-TIMER
-========================================================= */
+   TIMERS & HELPERS
+   ========================================================= */
 
 function startGameTimer() {
+    stopGameTimer();
+    let remaining = GAME_CONFIG.ROUND_TIME;
+    updateTimerDisplay(remaining);
 
-
-stopGameTimer();
-
-
-let remaining =
-    GAME_CONFIG.ROUND_TIME;
-
-
-updateTimerDisplay(
-    remaining
-);
-
-
-GAME.timer =
-    setInterval(
-        () => {
-
-            /*
-             * Ignore old timer callbacks.
-             */
-
-            if (
-                GAME.phase !== "choosing"
-            ) {
-
-                stopGameTimer();
-
-                return;
-
-            }
-
-
-            remaining--;
-
-
-            updateTimerDisplay(
-                remaining
-            );
-
-
-            if (
-                remaining <= 5 &&
-                remaining > 0
-            ) {
-
-                playGameSound("tick");
-
-            }
-
-
-            if (
-                remaining <= 0
-            ) {
-
-                stopGameTimer();
-
-                handleTimeout();
-
-            }
-
-        },
-        1000
-    );
-
-
+    GAME.timer = setInterval(() => {
+        if (GAME.phase !== "choosing") {
+            stopGameTimer();
+            return;
+        }
+        remaining--;
+        updateTimerDisplay(remaining);
+        if (remaining <= 5 && remaining > 0) playGameSound("tick");
+        if (remaining <= 0) {
+            stopGameTimer();
+            // Default timeout move
+            lockPlayerStrategy("defend");
+        }
+    }, 1000);
 }
 
 function updateTimerDisplay(seconds) {
-
-
-if (
-    UI.elements.timer
-) {
-
-    UI.elements.timer.textContent =
-        Math.max(0, seconds);
-
-}
-
-
-if (
-    UI.elements.timerProgress
-) {
-
-    const percentage =
-        Math.max(
-            0,
-            (seconds /
-                GAME_CONFIG.ROUND_TIME) *
-            100
-        );
-
-    UI.elements.timerProgress.style.width =
-        `${percentage}%`;
-
-}
-
-
+    if (UI.elements.timer) UI.elements.timer.textContent = Math.max(0, seconds);
+    if (UI.elements.timerProgress) {
+        const pct = Math.max(0, (seconds / GAME_CONFIG.ROUND_TIME) * 100);
+        UI.elements.timerProgress.style.width = `${pct}%`;
+    }
 }
 
 function stopGameTimer() {
-
-
-if (GAME.timer) {
-
-    clearInterval(
-        GAME.timer
-    );
-
-    GAME.timer = null;
-
-}
-
-
+    if (GAME.timer) {
+        clearInterval(GAME.timer);
+        GAME.timer = null;
+    }
 }
 
 function clearAITimeout() {
-
-
-if (GAME.aiTimeout) {
-
-    clearTimeout(
-        GAME.aiTimeout
-    );
-
-    GAME.aiTimeout = null;
-
-}
-
-
+    if (GAME.aiTimeout) {
+        clearTimeout(GAME.aiTimeout);
+        GAME.aiTimeout = null;
+    }
 }
 
 function clearTimers() {
-
-
-stopGameTimer();
-
-clearAITimeout();
-
-
+    stopGameTimer();
+    clearAITimeout();
 }
 
 /* =========================================================
-PLAYER STRATEGY
-========================================================= */
-
-function submitPlayerStrategy(strategy) {
-
-
-/*
- * This is the main anti-double-submit protection.
- */
-
-if (
-    GAME.phase !== "choosing"
-) {
-
-    return;
-
-}
-
-
-if (
-    !strategy ||
-    !STRATEGIES[strategy.toUpperCase()]
-) {
-
-    return;
-
-}
-
-
-if (!GAME.currentScenario) {
-
-    return;
-
-}
-
-
-/*
- * Immediately change phase.
- *
- * Any additional clicks after this point are ignored.
- */
-
-GAME.phase = "processing";
-
-
-stopGameTimer();
-
-
-disableStrategySelection();
-
-
-UI.selectedStrategy =
-    strategy;
-
-
-GAME.playerHistory.push(
-    strategy
-);
-
-
-playGameSound("select");
-
-
-showAIThinking();
-
-
-/*
- * AI is processed only once.
- */
-
-clearAITimeout();
-
-
-GAME.aiTimeout =
-    setTimeout(
-        () => {
-
-            GAME.aiTimeout = null;
-
-
-            if (
-                GAME.phase !==
-                "processing"
-            ) {
-
-                return;
-
-            }
-
-
-            processRound(
-                strategy
-            );
-
-        },
-        GAME_CONFIG.AI_THINKING_TIME
-    );
-
-
-}
-
-/* =========================================================
-TIMER TIMEOUT
-========================================================= */
-
-function handleTimeout() {
-
-
-if (
-    GAME.phase !== "choosing"
-) {
-
-    return;
-
-}
-
-
-GAME.phase = "processing";
-
-
-disableStrategySelection();
-
-
-/*
- * Timeout always defaults to DEFEND.
- */
-
-const strategy =
-    STRATEGIES.DEFEND.id;
-
-
-UI.selectedStrategy =
-    strategy;
-
-
-GAME.playerHistory.push(
-    strategy
-);
-
-
-showToast(
-    "Time expired — DEFEND selected."
-);
-
-
-playGameSound("timeout");
-
-
-showAIThinking();
-
-
-clearAITimeout();
-
-
-GAME.aiTimeout =
-    setTimeout(
-        () => {
-
-            GAME.aiTimeout = null;
-
-
-            if (
-                GAME.phase !==
-                "processing"
-            ) {
-
-                return;
-
-            }
-
-
-            processRound(
-                strategy
-            );
-
-        },
-        GAME_CONFIG.AI_THINKING_TIME
-    );
-
-
-}
-
-/* =========================================================
-PROCESS ROUND
-========================================================= */
-
-function processRound(
-playerStrategy
-) {
-
-
-if (
-    GAME.phase !== "processing"
-) {
-
-    return;
-
-}
-
-
-if (
-    !GAME.currentScenario
-) {
-
-    GAME.phase = "idle";
-
-    return;
-
-}
-
-
-/*
- * AI makes exactly one decision.
- */
-
-const aiStrategy =
-    getAIDecision(
-        GAME.currentScenario,
-        GAME.difficulty,
-        GAME.playerHistory,
-        {
-            player: GAME.playerScore,
-            ai: GAME.aiScore
-        }
-    );
-
-
-GAME.aiHistory.push(
-    aiStrategy
-);
-
-
-/*
- * Calculate payoff.
- */
-
-const payoff =
-    getPayoff(
-        GAME.currentScenario,
-        playerStrategy,
-        aiStrategy
-    );
-
-
-const playerPoints =
-    Math.max(
-        0,
-        Number(payoff.player || 0)
-    );
-
-
-const aiPoints =
-    Math.max(
-        0,
-        Number(payoff.ai || 0)
-    );
-
-
-/*
- * Comeback bonus.
- */
-
-let comebackBonus = 0;
-
-
-if (
-    GAME.comebackRound &&
-    playerPoints > aiPoints
-) {
-
-    comebackBonus = 2;
-
-}
-
-
-const finalPlayerPoints =
-    playerPoints +
-    comebackBonus;
-
-
-/*
- * Update total scores.
- */
-
-GAME.playerScore +=
-    finalPlayerPoints;
-
-
-GAME.aiScore +=
-    aiPoints;
-
-
-/*
- * Determine round winner.
- */
-
-let winner = "draw";
-
-
-if (
-    finalPlayerPoints >
-    aiPoints
-) {
-
-    winner = "player";
-
-} else if (
-    aiPoints >
-    finalPlayerPoints
-) {
-
-    winner = "ai";
-
-}
-
-
-/*
- * Strategic insight.
- */
-
-const insight =
-    generateRoundInsight(
-        GAME.currentScenario,
-        playerStrategy,
-        aiStrategy,
-        winner
-    );
-
-
-const result = {
-
-    round: GAME.round,
-
-    scenario:
-        GAME.currentScenario.title,
-
-    concept:
-        GAME.currentScenario.gameTheory,
-
-    playerStrategy,
-
-    aiStrategy,
-
-    playerPoints:
-        finalPlayerPoints,
-
-    aiPoints,
-
-    basePlayerPoints:
-        playerPoints,
-
-    comebackBonus,
-
-    winner,
-
-    insight
-
-};
-
-
-GAME.roundResults.push(
-    result
-);
-
-
-/*
- * Track concepts.
- */
-
-const concept =
-    GAME.currentScenario.gameTheory;
-
-
-if (
-    concept &&
-    !GAME.conceptsLearned.includes(
-        concept
-    )
-) {
-
-    GAME.conceptsLearned.push(
-        concept
-    );
-
-}
-
-
-/*
- * Update performance.
- */
-
-updatePerformance();
-
-
-/*
- * Save progress.
- */
-
-saveStoredData({
-
-    playerName:
-        GAME.playerName,
-
-    difficulty:
-        GAME.difficulty,
-
-    lastScore:
-        GAME.playerScore
-
-});
-
-
-GAME.phase = "result";
-
-
-hideAIThinking();
-
-
-showRoundResult({
-
-    ...result,
-
-    playerScore:
-        GAME.playerScore,
-
-    aiScore:
-        GAME.aiScore
-
-});
-
-
-}
-
-/* =========================================================
-ROUND INSIGHT
-========================================================= */
-
-function generateRoundInsight(
-scenario,
-playerStrategy,
-aiStrategy,
-winner
-) {
-
-
-if (
-    winner === "player"
-) {
-
-    return (
-        scenario.insight ||
-        "Your decision produced a stronger payoff than the AI's."
-    );
-
-}
-
-
-if (
-    winner === "ai"
-) {
-
-    return (
-        `The AI used ${formatStrategy(aiStrategy)} effectively. ` +
-        `Consider how the opponent's decision affected your payoff.`
-    );
-
-}
-
-
-return (
-    "Both strategies produced a similar outcome. " +
-    "The next round may require a different approach."
-);
-
-
-}
-
-/* =========================================================
-PERFORMANCE
-========================================================= */
-
-function updatePerformance() {
-
-
-const rounds =
-    GAME.roundResults.length;
-
-
-if (rounds === 0) {
-
-    return;
-
-}
-
-
-/*
- * Prediction
- *
- * Measures how often the player chooses a strategy
- * that beats the AI's strategy in the current matrix.
- */
-
-let predictionWins = 0;
-
-
-GAME.roundResults.forEach(
-    result => {
-
-        if (
-            result.playerPoints >
-            result.aiPoints
-        ) {
-
-            predictionWins++;
-
-        }
-
-    }
-);
-
-
-GAME.performance.prediction =
-    Math.round(
-        (
-            predictionWins /
-            rounds
-        ) * 100
-    );
-
-
-/*
- * Adaptability
- *
- * Rewards changing strategy after an unsuccessful
- * round and maintaining strong performance.
- */
-
-if (rounds <= 1) {
-
-    GAME.performance.adaptability = 50;
-
-} else {
-
-    let adaptationScore = 50;
-
-    for (
-        let i = 1;
-        i < GAME.roundResults.length;
-        i++
-    ) {
-
-        const previous =
-            GAME.roundResults[i - 1];
-
-        const current =
-            GAME.roundResults[i];
-
-
-        if (
-            previous.winner === "ai" &&
-            current.playerPoints >=
-            current.aiPoints
-        ) {
-
-            adaptationScore += 12;
-
-        }
-
-
-        if (
-            previous.winner === "player" &&
-            current.playerStrategy !==
-            previous.playerStrategy
-        ) {
-
-            adaptationScore += 5;
-
-        }
-
-    }
-
-
-    GAME.performance.adaptability =
-        clamp(
-            adaptationScore,
-            0,
-            100
-        );
-
-}
-
-
-/*
- * Risk Management
- */
-
-let riskScore = 50;
-
-
-GAME.roundResults.forEach(
-    result => {
-
-        if (
-            result.playerStrategy ===
-            STRATEGIES.DEFEND.id
-        ) {
-
-            riskScore += 5;
-
-        }
-
-        if (
-            result.playerStrategy ===
-            STRATEGIES.INVEST.id &&
-            result.playerPoints >= 7
-        ) {
-
-            riskScore += 7;
-
-        }
-
-        if (
-            result.playerStrategy ===
-            STRATEGIES.ATTACK.id &&
-            result.playerPoints <= 3
-        ) {
-
-            riskScore -= 6;
-
-        }
-
-    }
-);
-
-
-GAME.performance.risk =
-    clamp(
-        riskScore,
-        0,
-        100
-    );
-
-
-/*
- * Decision Making
- */
-
-const totalPlayerPoints =
-    GAME.roundResults.reduce(
-        (sum, result) =>
-            sum + result.playerPoints,
-        0
-    );
-
-
-const maximumPossible =
-    rounds * 10;
-
-
-GAME.performance.decision =
-    Math.round(
-        (
-            totalPlayerPoints /
-            maximumPossible
-        ) * 100
-    );
-
-
-GAME.performance.decision =
-    clamp(
-        GAME.performance.decision,
-        0,
-        100
-    );
-
-
-/*
- * Overall performance
- */
-
-GAME.performance.overall =
-    Math.round(
-        (
-            GAME.performance.prediction +
-            GAME.performance.adaptability +
-            GAME.performance.risk +
-            GAME.performance.decision
-        ) / 4
-    );
-
-
-}
-
-/* =========================================================
-FINISH GAME
-========================================================= */
+   GAME END & STORAGE
+   ========================================================= */
 
 function finishGame() {
+    GAME.phase = "final";
+    clearTimers();
 
+    // Check winner
+    const sorted = [...GAME.players].sort((a, b) => b.score - a.score);
+    const winner = sorted[0];
 
-clearTimers();
-
-
-GAME.phase = "finished";
-
-
-GAME.gameStarted = false;
-
-
-GAME.performance.overall =
-    Math.round(
-        (
-            GAME.performance.prediction +
-            GAME.performance.adaptability +
-            GAME.performance.risk +
-            GAME.performance.decision
-        ) / 4
-    );
-
-
-saveLeaderboard();
-
-
-showFinalResult({
-
-    playerName:
-        GAME.playerName,
-
-    playerScore:
-        GAME.playerScore,
-
-    aiScore:
-        GAME.aiScore,
-
-    performance:
-        GAME.performance,
-
-    conceptsLearned:
-        GAME.conceptsLearned
-
-});
-
-
-}
-
-/* =========================================================
-LEADERBOARD
-========================================================= */
-
-function saveLeaderboard() {
-
-
-const data =
-    getStoredData();
-
-
-const leaderboard =
-    Array.isArray(
-        data.leaderboard
-    )
-        ? data.leaderboard
-        : [];
-
-
-leaderboard.push({
-
-    name:
-        GAME.playerName,
-
-    score:
-        GAME.playerScore,
-
-    difficulty:
-        GAME.difficulty,
-
-    winner:
-        GAME.playerScore >
-        GAME.aiScore
-            ? "PLAYER"
-            : GAME.playerScore <
-              GAME.aiScore
-                ? "AI"
-                : "DRAW",
-
-    performance:
-        GAME.performance.overall,
-
-    date:
-        new Date().toISOString()
-
-});
-
-
-leaderboard.sort(
-    (a, b) =>
-        b.score - a.score
-);
-
-
-data.leaderboard =
-    leaderboard.slice(
-        0,
-        GAME_CONFIG.LEADERBOARD_LIMIT
-    );
-
-
-localStorage.setItem(
-    GAME_CONFIG.STORAGE_KEY,
-    JSON.stringify(data)
-);
-
-
-}
-
-/* =========================================================
-STORAGE
-========================================================= */
-
-function getStoredData() {
-
-
-try {
-
-    const raw =
-        localStorage.getItem(
-            GAME_CONFIG.STORAGE_KEY
-        );
-
-
-    if (!raw) {
-
-        return {};
-
+    if (!winner.isAI) {
+        GAME.streaks.winStreak++;
+        if (GAME.streaks.winStreak > GAME.streaks.bestStreak) {
+            GAME.streaks.bestStreak = GAME.streaks.winStreak;
+        }
+        checkAchievements(winner);
+    } else {
+        GAME.streaks.winStreak = 0;
     }
 
-
-    return JSON.parse(raw) || {};
-
-} catch (error) {
-
-    console.warn(
-        "EduStrategist storage error:",
-        error
-    );
-
-    return {};
-
+    saveGameRecord(sorted);
+    renderFinalResultsUI(sorted);
+    showScreen("final");
 }
 
+function checkAchievements(player) {
+    const unlocked = getStoredData()?.achievements || [];
+    const newUnlocked = [...unlocked];
 
+    if (!newUnlocked.includes("first_win")) newUnlocked.push("first_win");
+    if (player.score >= 40 && !newUnlocked.includes("master_strategist")) newUnlocked.push("master_strategist");
+    if (player.predictionsCorrect >= 5 && !newUnlocked.includes("mind_reader")) newUnlocked.push("mind_reader");
+    if (GAME.streaks.winStreak >= 5 && !newUnlocked.includes("unstoppable")) newUnlocked.push("unstoppable");
+
+    saveStoredData({ achievements: newUnlocked });
 }
 
-function saveStoredData(values = {}) {
+function saveGameRecord(sortedPlayers) {
+    const data = getStoredData() || {};
+    const history = data.gameHistory || [];
 
+    history.unshift({
+        date: new Date().toLocaleDateString(),
+        mode: GAME.gameMode,
+        playerCount: GAME.playerCount,
+        winner: sortedPlayers[0].name,
+        scores: sortedPlayers.map(p => `${p.name}: ${p.score}`).join(", "),
+        rounds: GAME.round
+    });
 
-const current =
-    getStoredData();
-
-
-const updated = {
-
-    ...current,
-
-    ...values
-
-};
-
-
-localStorage.setItem(
-    GAME_CONFIG.STORAGE_KEY,
-    JSON.stringify(updated)
-);
-
-
+    saveStoredData({
+        playerName: GAME.players[0]?.name || "Player 1",
+        difficulty: GAME.difficulty,
+        gameHistory: history.slice(0, 20)
+    });
 }
 
-function clearAllStoredData() {
+function restartGame() {
+    setupMultiplayerGame(GAME.players.map(p => ({
+        name: p.name, avatar: p.avatar, color: p.color, isAI: p.isAI, personality: p.personality
+    })), GAME.gameMode, GAME.boss);
+}
 
+function returnToMainMenu() {
+    clearTimers();
+    GAME.phase = "idle";
+    GAME.gameStarted = false;
+    showScreen("mainMenu");
+}
 
-localStorage.removeItem(
-    GAME_CONFIG.STORAGE_KEY
-);
-
-
+function setSelectedDifficulty(diff) {
+    GAME.difficulty = diff;
 }
 
 /* =========================================================
-LEADERBOARD DATA
-========================================================= */
+   STORAGE ACCESSORS
+   ========================================================= */
+
+function getStoredData() {
+    try {
+        const item = localStorage.getItem(GAME_CONFIG.STORAGE_KEY);
+        return item ? JSON.parse(item) : null;
+    } catch (e) {
+        return null;
+    }
+}
+
+function saveStoredData(data) {
+    try {
+        const existing = getStoredData() || {};
+        const updated = { ...existing, ...data };
+        localStorage.setItem(GAME_CONFIG.STORAGE_KEY, JSON.stringify(updated));
+    } catch (e) { }
+}
 
 function getLeaderboard() {
-
-
-const data =
-    getStoredData();
-
-
-return Array.isArray(
-    data.leaderboard
-)
-    ? data.leaderboard
-    : [];
-
-
+    const data = getStoredData();
+    return data && data.gameHistory ? data.gameHistory : [];
 }
 
 function clearLeaderboard() {
-
-
-const data =
-    getStoredData();
-
-
-data.leaderboard = [];
-
-
-localStorage.setItem(
-    GAME_CONFIG.STORAGE_KEY,
-    JSON.stringify(data)
-);
-
-
-renderLeaderboard();
-
-
-showToast(
-    "Leaderboard cleared."
-);
-
-
+    saveStoredData({ gameHistory: [] });
 }
 
-/* =========================================================
-RESTART
-========================================================= */
-
-function restartGame() {
-
-
-const name =
-    GAME.playerName ||
-    UI.elements.playerName?.value ||
-    "";
-
-
-clearTimers();
-
-
-GAME.phase = "idle";
-
-
-GAME.gameStarted = false;
-
-
-UI.selectedStrategy = null;
-
-
-startGame(name);
-
-
+function clearAllStoredData() {
+    try {
+        localStorage.removeItem(GAME_CONFIG.STORAGE_KEY);
+    } catch (e) { }
 }
-
-/* =========================================================
-RETURN TO MENU
-========================================================= */
-
-function returnToMainMenu() {
-
-
-clearTimers();
-
-
-GAME.phase = "idle";
-
-
-GAME.gameStarted = false;
-
-
-GAME.currentScenario = null;
-
-
-UI.selectedStrategy = null;
-
-
-showScreen("mainMenu");
-
-
-}
-
-/* =========================================================
-DIFFICULTY
-========================================================= */
-
-function setSelectedDifficulty(
-difficulty
-) {
-
-
-if (
-    !Object.values(
-        AI_DIFFICULTY
-    ).includes(difficulty)
-) {
-
-    return;
-
-}
-
-
-GAME.difficulty =
-    difficulty;
-
-
-}
-
-/* =========================================================
-STRATEGY SELECTION CONTROL
-========================================================= */
 
 function disableStrategySelection() {
-
-
-if (
-    UI.elements.strategyGrid
-) {
-
-    UI.elements.strategyGrid
-        .querySelectorAll(
-            ".strategy-card"
-        )
-        .forEach(
-            card => {
-
-                card.disabled = true;
-
-            }
-        );
-
-}
-
-
-/*
- * Correct ID:
- * btn-confirm-strategy
- */
-
-if (
-    UI.elements.confirmStrategyButton
-) {
-
-    UI.elements.confirmStrategyButton.disabled =
-        true;
-
-}
-
-
+    if (UI.elements.strategyGrid) {
+        UI.elements.strategyGrid.querySelectorAll(".strategy-card").forEach(card => card.disabled = true);
+    }
+    if (UI.elements.confirmStrategyButton) UI.elements.confirmStrategyButton.disabled = true;
 }
 
 function enableStrategySelection() {
-
-
-if (
-    UI.elements.strategyGrid
-) {
-
-    UI.elements.strategyGrid
-        .querySelectorAll(
-            ".strategy-card"
-        )
-        .forEach(
-            card => {
-
-                card.disabled = false;
-
-            }
-        );
-
+    if (UI.elements.strategyGrid) {
+        UI.elements.strategyGrid.querySelectorAll(".strategy-card").forEach(card => card.disabled = false);
+    }
+    if (UI.elements.confirmStrategyButton) UI.elements.confirmStrategyButton.disabled = !UI.selectedStrategy;
 }
-
-
-if (
-    UI.elements.confirmStrategyButton
-) {
-
-    UI.elements.confirmStrategyButton.disabled =
-        !UI.selectedStrategy;
-
-}
-
-
-}
-
-/* =========================================================
-HELPERS
-========================================================= */
-
-function formatStrategy(strategy) {
-
-
-if (!strategy) {
-
-    return "UNKNOWN";
-
-}
-
-
-return strategy
-    .toString()
-    .replace(
-        /^./,
-        letter =>
-            letter.toUpperCase()
-    );
-
-
-}
-
-function clamp(
-value,
-minimum,
-maximum
-) {
-
-
-return Math.min(
-    maximum,
-    Math.max(
-        minimum,
-        Number(value) || 0
-    )
-);
-
-
-}
-
-/* =========================================================
-AUDIO BRIDGE
-========================================================= */
 
 function playGameSound(type) {
-
-
-/*
- * ui.js owns the actual Web Audio implementation.
- * This bridge keeps game.js independent.
- */
-
-if (
-    typeof playSound === "function"
-) {
-
-    playSound(type);
-
-}
-
-
+    if (typeof playSound === "function") playSound(type);
 }
 
 /* =========================================================
-GLOBAL API
-========================================================= */
+   GLOBAL API WRAPPER
+   ========================================================= */
 
 window.EduStrategistGame = {
-
-
-startGame,
-
-submitPlayerStrategy,
-
-nextRound: function () {
-
-    if (
-        GAME.phase !== "result"
-    ) {
-
-        return;
-
-    }
-
-
-    if (
-        GAME.round >=
-        GAME.totalRounds
-    ) {
-
-        finishGame();
-
-        return;
-
-    }
-
-
-    startNextRound();
-
-},
-
-restartGame,
-
-returnToMainMenu,
-
-setSelectedDifficulty,
-
-getLeaderboard,
-
-clearLeaderboard,
-
-clearAllStoredData,
-
-getState: function () {
-
-    return GAME;
-
-}
-
-
+    startGame,
+    setupMultiplayerGame,
+    lockPlayerStrategy,
+    submitPlayerStrategy,
+    requestHint,
+    nextRound: function () {
+        if (GAME.phase !== "result") return;
+        if (GAME.round >= GAME.totalRounds && GAME.gameMode !== "endless") {
+            finishGame();
+            return;
+        }
+        startNextRound();
+    },
+    restartGame,
+    returnToMainMenu,
+    setSelectedDifficulty,
+    getLeaderboard,
+    clearLeaderboard,
+    clearAllStoredData,
+    getState: function () { return GAME; }
 };
-
-/* =========================================================
-START INITIALIZATION
-========================================================= */
 
 initializeGame();
